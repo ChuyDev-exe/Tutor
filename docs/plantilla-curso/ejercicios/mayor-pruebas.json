@@ -1,0 +1,5 @@
+[
+  { "nombre": "18", "entrada": "18\n", "esperado": "mayor" },
+  { "nombre": "17", "entrada": "17\n", "esperado": "menor" },
+  { "nombre": "40", "entrada": "40\n", "esperado": "mayor" }
+]

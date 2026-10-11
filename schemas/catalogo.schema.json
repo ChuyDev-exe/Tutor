@@ -1,0 +1,30 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://tutor-ide/schemas/catalogo.schema.json",
+  "title": "Catálogo de cursos de Tutor IDE (catalogo.json)",
+  "type": "object",
+  "required": ["cursos"],
+  "additionalProperties": false,
+  "properties": {
+    "$schema": { "type": "string" },
+    "nombre": { "type": "string", "description": "Nombre del repositorio." },
+    "cursos": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "titulo"],
+        "additionalProperties": false,
+        "properties": {
+          "id": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]*$" },
+          "titulo": { "type": "string", "minLength": 1 },
+          "descripcion": { "type": "string" },
+          "nivel": { "type": "string" },
+          "tags": { "type": "array", "items": { "type": "string" } },
+          "version": { "type": "string", "pattern": "^\\d+(\\.\\d+)*$", "description": "Si es mayor que la instalada se ofrece «Actualizar»." },
+          "ruta": { "type": "string", "description": "Carpeta del curso relativa al catálogo (por defecto cursos/<id>)." },
+          "archivos": { "type": "array", "items": { "type": "string" } }
+        }
+      }
+    }
+  }
+}

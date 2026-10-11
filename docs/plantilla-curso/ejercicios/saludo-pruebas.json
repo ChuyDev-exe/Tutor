@@ -1,0 +1,5 @@
+[
+  { "nombre": "Ana", "entrada": "Ana\n", "esperado": "Hola, Ana!" },
+  { "nombre": "Luis", "entrada": "Luis\n", "esperado": "Hola, Luis!" },
+  { "nombre": "Nombre con espacios", "entrada": "Mar Gómez\n", "esperado": "Hola, Mar Gómez!" }
+]

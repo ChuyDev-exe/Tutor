@@ -1,0 +1,809 @@
+{
+  "name": "tutor-ide",
+  "displayName": "Tutor IDE",
+  "description": "Aprende programación sin salir del editor: cursos con ejercicios y pruebas automáticas, evaluaciones, progreso, tutor con IA en modo mentor y opciones de enfoque y accesibilidad.",
+  "version": "0.3.0",
+  "publisher": "your-publisher-id",
+  "license": "MIT",
+  "author": {
+    "name": "Tutor IDE contributors"
+  },
+  "homepage": "https://github.com/your-user/tutor-ide#readme",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/your-user/tutor-ide.git"
+  },
+  "bugs": {
+    "url": "https://github.com/your-user/tutor-ide/issues"
+  },
+  "qna": "marketplace",
+  "pricing": "Free",
+  "engines": {
+    "vscode": "^1.82.0"
+  },
+  "extensionKind": [
+    "workspace"
+  ],
+  "categories": [
+    "Education",
+    "Other"
+  ],
+  "keywords": [
+    "tutor",
+    "aprender",
+    "cursos",
+    "ejercicios",
+    "programación",
+    "chat",
+    "ia",
+    "accesibilidad",
+    "tdah",
+    "cursor",
+    "antigravity",
+    "learn",
+    "education"
+  ],
+  "icon": "media/icon.png",
+  "galleryBanner": {
+    "color": "#1e293b",
+    "theme": "dark"
+  },
+  "activationEvents": [
+    "workspaceContains:.tutor"
+  ],
+  "capabilities": {
+    "untrustedWorkspaces": {
+      "supported": false,
+      "description": "Tutor IDE ejecuta código, compiladores y scripts de configuración de los cursos en tu máquina; solo debe usarse en espacios de trabajo de confianza."
+    },
+    "virtualWorkspaces": {
+      "supported": false,
+      "description": "Necesita acceso al sistema de archivos local para crear tu carpeta de trabajo y ejecutar tu código."
+    }
+  },
+  "main": "./dist/extension.js",
+  "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "tutor-container",
+          "title": "Tutor",
+          "icon": "media/icon.svg"
+        }
+      ]
+    },
+    "views": {
+      "tutor-container": [
+        {
+          "id": "tutorFocus",
+          "name": "Enfoque",
+          "type": "webview",
+          "when": "config.tutor.focus.modoEnfoque",
+          "contextualTitle": "Sesión de enfoque"
+        },
+        {
+          "id": "tutorChapters",
+          "name": "Capítulos",
+          "contextualTitle": "Capítulos del curso"
+        },
+        {
+          "id": "tutorSearch",
+          "name": "Buscar",
+          "type": "webview",
+          "when": "!config.tutor.focus.modoEnfoque"
+        },
+        {
+          "id": "tutorChat",
+          "name": "Tutor",
+          "type": "webview"
+        }
+      ]
+    },
+    "commands": [
+      {
+        "command": "tutor.openChapter",
+        "title": "Tutor: Abrir capítulo"
+      },
+      {
+        "command": "tutor.openExercise",
+        "title": "Tutor: Abrir ejercicio"
+      },
+      {
+        "command": "tutor.openQuiz",
+        "title": "Tutor: Abrir evaluación"
+      },
+      {
+        "command": "tutor.importCourseFolder",
+        "title": "Tutor: Importar curso desde carpeta…",
+        "icon": "$(add)"
+      },
+      {
+        "command": "tutor.statusQuiz",
+        "title": "Tutor: Evaluación del capítulo actual (barra de estado)"
+      },
+      {
+        "command": "tutor.statusRun",
+        "title": "Tutor: Ejecutar código del ejercicio actual (barra de estado)"
+      },
+      {
+        "command": "tutor.statusTests",
+        "title": "Tutor: Ejecutar pruebas del ejercicio actual (barra de estado)"
+      },
+      {
+        "command": "tutor.refresh",
+        "title": "Tutor: Recargar contenido",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "tutor.configureAI",
+        "title": "Tutor: Configurar IA del tutor",
+        "icon": "$(settings-gear)"
+      },
+      {
+        "command": "tutor.setApiKey",
+        "title": "Tutor: Establecer API Key"
+      },
+      {
+        "command": "tutor.resetProgress",
+        "title": "Tutor: Reiniciar progreso"
+      },
+      {
+        "command": "tutor.searchRepo",
+        "title": "Tutor: Buscar cursos en el repositorio",
+        "icon": "$(search)"
+      },
+      {
+        "command": "tutor.checkRequirements",
+        "title": "Tutor: Verificar requisitos del curso",
+        "icon": "$(checklist)"
+      },
+      {
+        "command": "tutor.runSetup",
+        "title": "Tutor: Ejecutar setup del curso",
+        "icon": "$(tools)"
+      },
+      {
+        "command": "tutor.openManual",
+        "title": "Tutor: Abrir manual de configuración del curso",
+        "icon": "$(book)"
+      },
+      {
+        "command": "tutor.validateCourse",
+        "title": "Tutor: Validar curso"
+      },
+      {
+        "command": "tutor.nextStep",
+        "title": "Tutor: Siguiente paso",
+        "icon": "$(arrow-right)"
+      },
+      {
+        "command": "tutor.dashboard",
+        "title": "Tutor: Mi progreso",
+        "icon": "$(graph)"
+      },
+      {
+        "command": "tutor.accessibility",
+        "title": "Tutor: Accesibilidad y enfoque…",
+        "icon": "$(eye)"
+      },
+      {
+        "command": "tutor.focusToggle",
+        "title": "Tutor: Temporizador de enfoque (iniciar / pausar)",
+        "icon": "$(target)"
+      },
+      {
+        "command": "tutor.focusStart",
+        "title": "Tutor: Iniciar temporizador de enfoque…",
+        "icon": "$(target)"
+      },
+      {
+        "command": "tutor.focusStop",
+        "title": "Tutor: Detener temporizador de enfoque",
+        "icon": "$(debug-stop)"
+      },
+      {
+        "command": "tutor.runExercise",
+        "title": "Tutor: Ejecutar código del ejercicio",
+        "icon": "$(play)"
+      },
+      {
+        "command": "tutor.testExercise",
+        "title": "Tutor: Ejecutar pruebas del ejercicio",
+        "icon": "$(beaker)"
+      },
+      {
+        "command": "tutor.openExerciseFile",
+        "title": "Tutor: Abrir mi archivo del ejercicio",
+        "icon": "$(go-to-file)"
+      },
+      {
+        "command": "tutor.resetExercise",
+        "title": "Tutor: Restaurar mi archivo a la plantilla",
+        "icon": "$(discard)"
+      },
+      {
+        "command": "tutor.viewSolution",
+        "title": "Tutor: Ver solución",
+        "icon": "$(lightbulb)"
+      },
+      {
+        "command": "tutor.uninstallCourse",
+        "title": "Tutor: Desinstalar curso",
+        "icon": "$(trash)"
+      },
+      {
+        "command": "tutor.revealStudentFolder",
+        "title": "Tutor: Mostrar carpeta del alumno en el sistema",
+        "icon": "$(folder-opened)"
+      },
+      {
+        "command": "tutor.viewStatement",
+        "title": "Tutor: Ver enunciado del ejercicio",
+        "icon": "$(book)"
+      },
+      {
+        "command": "tutor.viewHint",
+        "title": "Tutor: Ver pista del ejercicio",
+        "icon": "$(question)"
+      },
+      {
+        "command": "tutor.openChapterQuiz",
+        "title": "Tutor: Abrir evaluación del capítulo",
+        "icon": "$(checklist)"
+      },
+      {
+        "command": "tutor.openDoubts",
+        "title": "Tutor: Mis dudas y preguntas",
+        "icon": "$(comment-discussion)"
+      },
+      {
+        "command": "tutor.validateCourseFiles",
+        "title": "Tutor: Validar estructura de un curso (autores)"
+      },
+      {
+        "command": "tutor.preferences",
+        "title": "Tutor: Preferencias…",
+        "icon": "$(settings)"
+      },
+      {
+        "command": "tutor.accessibilityQuick",
+        "title": "Tutor: Perfiles de accesibilidad (menú rápido)"
+      },
+      {
+        "command": "tutor.parkThought",
+        "title": "Tutor: Anotar un pensamiento que me distrae",
+        "icon": "$(note)"
+      },
+      {
+        "command": "tutor.openThoughts",
+        "title": "Tutor: Ver mis pensamientos pendientes"
+      }
+    ],
+    "configuration": [
+      {
+        "id": "tutor1",
+        "title": "Tutor IDE · Aprendizaje",
+        "order": 1,
+        "properties": {
+          "tutor.autoCompleteOnPass": {
+            "type": "boolean",
+            "default": true,
+            "description": "Marca el ejercicio como resuelto (y desbloquea la solución) cuando pasan todas sus pruebas.",
+            "order": 1
+          },
+          "tutor.guardarDudas": {
+            "type": "boolean",
+            "default": true,
+            "description": "Guarda cada pregunta al tutor y su respuesta en dudas-y-preguntas.md dentro de tu carpeta del curso.",
+            "order": 2
+          },
+          "tutor.repoCatalogUrl": {
+            "type": "string",
+            "default": "",
+            "scope": "window",
+            "markdownDescription": "URL (http/https) del `catalogo.json` del repositorio de cursos. Formato en el README.",
+            "order": 3
+          },
+          "tutor.contentPath": {
+            "type": "string",
+            "default": "",
+            "description": "Carpeta extra con cursos locales (carpetas que contengan curso.json). Vacío = solo los cursos descargados.",
+            "order": 4
+          }
+        }
+      },
+      {
+        "id": "tutor2",
+        "title": "Tutor IDE · IA del tutor",
+        "order": 2,
+        "properties": {
+          "tutor.provider": {
+            "type": "string",
+            "enum": [
+              "openai",
+              "anthropic",
+              "gemini",
+              "openrouter",
+              "groq",
+              "opencode",
+              "ollama",
+              "lmstudio",
+              "custom"
+            ],
+            "default": "openai",
+            "markdownDescription": "Proveedor de IA del tutor: ChatGPT (OpenAI), Claude (Anthropic), Gemini (Google), OpenRouter, Groq, OpenCode (local), Ollama, LM Studio u otra API compatible con OpenAI.",
+            "scope": "application",
+            "enumDescriptions": [
+              "ChatGPT (OpenAI)",
+              "Claude (Anthropic)",
+              "Gemini (Google)",
+              "OpenRouter (varios modelos)",
+              "Groq (rápido y económico)",
+              "OpenCode local (opencode serve)",
+              "Ollama (local, sin enviar datos)",
+              "LM Studio (local, sin enviar datos)",
+              "Otra API compatible con OpenAI"
+            ],
+            "order": 1
+          },
+          "tutor.model": {
+            "type": "string",
+            "default": "",
+            "description": "Modelo del tutor. Vacío = el primero del proveedor elegido (ej: gpt-4o-mini, llama-3.3-70b...).",
+            "scope": "application",
+            "order": 2
+          },
+          "tutor.apiBaseUrl": {
+            "type": "string",
+            "default": "",
+            "description": "URL base de la API. Vacío = la del proveedor elegido.",
+            "scope": "application",
+            "order": 3
+          },
+          "tutor.language": {
+            "type": "string",
+            "default": "español",
+            "description": "Idioma en el que el tutor debe responder.",
+            "order": 4
+          }
+        }
+      },
+      {
+        "id": "tutor3",
+        "title": "Tutor IDE · Enfoque",
+        "order": 3,
+        "properties": {
+          "tutor.focus.modoEnfoque": {
+            "type": "boolean",
+            "default": false,
+            "description": "Modo enfoque: muestra solo el capítulo actual, oculta lo bloqueado y el progreso global, y convierte los avisos en mensajes discretos de la barra de estado.",
+            "order": 1
+          },
+          "tutor.focus.limpiarEditor": {
+            "type": "boolean",
+            "default": false,
+            "description": "Durante una sesión de enfoque oculta minimapa, migas de pan y «sticky scroll»; se restauran al terminar.",
+            "order": 2
+          },
+          "tutor.focus.unaPreguntaALaVez": {
+            "type": "boolean",
+            "default": false,
+            "description": "En las evaluaciones, muestra una pregunta por pantalla.",
+            "order": 3
+          },
+          "tutor.focus.temporizadorAutomatico": {
+            "type": "boolean",
+            "default": false,
+            "description": "Inicia el temporizador de enfoque al abrir una lectura o un ejercicio.",
+            "order": 4
+          },
+          "tutor.focus.minutosTrabajo": {
+            "type": "number",
+            "default": 25,
+            "minimum": 1,
+            "maximum": 120,
+            "description": "Minutos de trabajo del temporizador de enfoque.",
+            "order": 5
+          },
+          "tutor.focus.minutosDescanso": {
+            "type": "number",
+            "default": 5,
+            "minimum": 1,
+            "maximum": 60,
+            "description": "Minutos de descanso del temporizador de enfoque.",
+            "order": 6
+          },
+          "tutor.focus.metaDiaria": {
+            "type": "number",
+            "default": 3,
+            "minimum": 1,
+            "maximum": 20,
+            "description": "Ejercicios que quieres resolver cada día (meta de la sesión de enfoque).",
+            "order": 7
+          },
+          "tutor.focus.avisoInactividad": {
+            "type": "number",
+            "default": 5,
+            "minimum": 0,
+            "maximum": 30,
+            "description": "Minutos sin actividad durante una sesión antes de un recordatorio suave en la barra de estado. 0 lo desactiva.",
+            "order": 8
+          },
+          "tutor.focus.mensajes": {
+            "type": "boolean",
+            "default": true,
+            "description": "Muestra mensajes breves de ánimo en el panel de la sesión de enfoque.",
+            "order": 9
+          }
+        }
+      },
+      {
+        "id": "tutor4",
+        "title": "Tutor IDE · Lectura y accesibilidad",
+        "order": 4,
+        "properties": {
+          "tutor.accesibilidad.tamanoTexto": {
+            "type": "number",
+            "default": 100,
+            "minimum": 80,
+            "maximum": 200,
+            "description": "Tamaño del texto de las vistas del tutor, en % (100 = normal).",
+            "order": 1
+          },
+          "tutor.accesibilidad.espaciado": {
+            "type": "number",
+            "default": 1.5,
+            "minimum": 1.2,
+            "maximum": 2.4,
+            "description": "Interlineado de las vistas del tutor.",
+            "order": 2
+          },
+          "tutor.accesibilidad.fuenteLegible": {
+            "type": "boolean",
+            "default": false,
+            "description": "Usa una fuente de alta legibilidad con más separación entre letras y palabras (apta para dislexia).",
+            "order": 3
+          },
+          "tutor.accesibilidad.anchoLectura": {
+            "type": "boolean",
+            "default": false,
+            "description": "Limita el ancho del texto a una columna cómoda de leer.",
+            "order": 4
+          },
+          "tutor.accesibilidad.altoContraste": {
+            "type": "boolean",
+            "default": false,
+            "description": "Refuerza bordes y subrayados en las vistas del tutor.",
+            "order": 5
+          },
+          "tutor.accesibilidad.reducirMovimiento": {
+            "type": "boolean",
+            "default": true,
+            "description": "Desactiva animaciones y transiciones en las vistas del tutor.",
+            "order": 6
+          },
+          "tutor.accesibilidad.sinEmojis": {
+            "type": "boolean",
+            "default": false,
+            "description": "Quita emojis de la interfaz del árbol y de los avisos (útil para lectura literal o lectores de pantalla).",
+            "order": 7
+          },
+          "tutor.accesibilidad.ocultarRacha": {
+            "type": "boolean",
+            "default": false,
+            "description": "Oculta la racha de días y mensajes que puedan generar presión.",
+            "order": 8
+          }
+        }
+      }
+    ],
+    "viewsWelcome": [
+      {
+        "view": "tutorChapters",
+        "contents": "Aún no hay cursos instalados.\n[Importar curso desde carpeta…](command:tutor.importCourseFolder)\n[Buscar cursos en el repositorio](command:tutor.searchRepo)\n[Accesibilidad y enfoque](command:tutor.accessibility)\nTras instalar un curso verás aquí el «Siguiente paso», los capítulos, tus ejercicios y las evaluaciones, sin salir de este panel."
+      }
+    ],
+    "menus": {
+      "commandPalette": [
+        {
+          "command": "tutor.openChapter",
+          "when": "false"
+        },
+        {
+          "command": "tutor.openExercise",
+          "when": "false"
+        },
+        {
+          "command": "tutor.openQuiz",
+          "when": "false"
+        },
+        {
+          "command": "tutor.validateCourse",
+          "when": "false"
+        },
+        {
+          "command": "tutor.statusQuiz",
+          "when": "false"
+        },
+        {
+          "command": "tutor.statusRun",
+          "when": "false"
+        },
+        {
+          "command": "tutor.statusTests",
+          "when": "false"
+        },
+        {
+          "command": "tutor.openChapterQuiz",
+          "when": "false"
+        }
+      ],
+      "view/title": [
+        {
+          "command": "tutor.dashboard",
+          "when": "view == tutorChapters",
+          "group": "navigation@1"
+        },
+        {
+          "command": "tutor.searchRepo",
+          "when": "view == tutorChapters",
+          "group": "navigation@2"
+        },
+        {
+          "command": "tutor.importCourseFolder",
+          "when": "view == tutorChapters",
+          "group": "1_misc@5"
+        },
+        {
+          "command": "tutor.preferences",
+          "when": "view == tutorChapters",
+          "group": "navigation@3"
+        },
+        {
+          "command": "tutor.focusToggle",
+          "when": "view == tutorChapters",
+          "group": "1_misc@6"
+        },
+        {
+          "command": "tutor.refresh",
+          "when": "view == tutorChapters",
+          "group": "1_misc@1"
+        },
+        {
+          "command": "tutor.configureAI",
+          "when": "view == tutorChapters",
+          "group": "1_misc@2"
+        },
+        {
+          "command": "tutor.setApiKey",
+          "when": "view == tutorChapters",
+          "group": "1_misc@3"
+        },
+        {
+          "command": "tutor.focusStart",
+          "when": "view == tutorChapters",
+          "group": "2_focus@1"
+        },
+        {
+          "command": "tutor.focusStop",
+          "when": "view == tutorChapters",
+          "group": "2_focus@2"
+        },
+        {
+          "command": "tutor.resetProgress",
+          "when": "view == tutorChapters",
+          "group": "9_danger@1"
+        },
+        {
+          "command": "tutor.openDoubts",
+          "when": "view == tutorChapters",
+          "group": "1_misc@4"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "tutor.checkRequirements",
+          "when": "view == tutorChapters && viewItem =~ /^tutorCourse/",
+          "group": "inline@1"
+        },
+        {
+          "command": "tutor.runSetup",
+          "when": "view == tutorChapters && viewItem =~ /^tutorCourse.*Setup/",
+          "group": "inline@2"
+        },
+        {
+          "command": "tutor.openManual",
+          "when": "view == tutorChapters && viewItem =~ /^tutorCourse.*Manual/",
+          "group": "inline@3"
+        },
+        {
+          "command": "tutor.revealStudentFolder",
+          "when": "view == tutorChapters && viewItem =~ /^tutorCourse/",
+          "group": "1_files@1"
+        },
+        {
+          "command": "tutor.uninstallCourse",
+          "when": "view == tutorChapters && viewItem =~ /^tutorCourse/",
+          "group": "9_danger@1"
+        },
+        {
+          "command": "tutor.runExercise",
+          "when": "view == tutorChapters && viewItem =~ /^tutorExercise.*Runnable/",
+          "group": "inline@1"
+        },
+        {
+          "command": "tutor.testExercise",
+          "when": "view == tutorChapters && viewItem =~ /^tutorExercise.*Tests/",
+          "group": "inline@2"
+        },
+        {
+          "command": "tutor.viewSolution",
+          "when": "view == tutorChapters && viewItem =~ /^tutorExerciseDone/",
+          "group": "inline@3"
+        },
+        {
+          "command": "tutor.openChapterQuiz",
+          "when": "view == tutorChapters && viewItem =~ /^tutorChapterQuiz/",
+          "group": "inline@1"
+        },
+        {
+          "command": "tutor.viewStatement",
+          "when": "view == tutorChapters && viewItem =~ /^tutorExercise/",
+          "group": "1_ver@1"
+        },
+        {
+          "command": "tutor.viewHint",
+          "when": "view == tutorChapters && viewItem =~ /^tutorExercise/ && viewItem !~ /^tutorExerciseDone/",
+          "group": "1_ver@2"
+        },
+        {
+          "command": "tutor.openExerciseFile",
+          "when": "view == tutorChapters && viewItem =~ /^tutorExercise/",
+          "group": "2_archivo@1"
+        },
+        {
+          "command": "tutor.resetExercise",
+          "when": "view == tutorChapters && viewItem =~ /^tutorExercise/",
+          "group": "2_archivo@2"
+        }
+      ]
+    },
+    "walkthroughs": [
+      {
+        "id": "tutor.gettingStarted",
+        "title": "Empieza con Tutor IDE",
+        "description": "Instala un curso, prepara tu entorno y resuelve tu primer ejercicio sin salir del editor.",
+        "steps": [
+          {
+            "id": "install",
+            "title": "Instala un curso",
+            "description": "Busca un curso en un repositorio o importa una carpeta que tenga `curso.json`.\n[Buscar cursos](command:tutor.searchRepo)\n[Importar desde carpeta](command:tutor.importCourseFolder)",
+            "media": {
+              "markdown": "media/walkthrough/instalar.md"
+            },
+            "completionEvents": [
+              "onCommand:tutor.importCourseFolder",
+              "onCommand:tutor.courseInstalled"
+            ]
+          },
+          {
+            "id": "setup",
+            "title": "Prepara tu entorno",
+            "description": "Comprueba que tienes lo que pide el curso (por ejemplo gcc) y ejecuta su setup.\n[Verificar requisitos](command:tutor.checkRequirements)\n[Ejecutar setup](command:tutor.runSetup)",
+            "media": {
+              "markdown": "media/walkthrough/entorno.md"
+            },
+            "completionEvents": [
+              "onCommand:tutor.checkRequirements"
+            ]
+          },
+          {
+            "id": "exercise",
+            "title": "Resuelve tu primer ejercicio",
+            "description": "El panel Tutor te dice cuál es el siguiente paso. Haz clic en un ejercicio para abrir tu archivo y su enunciado.\n[Siguiente paso](command:tutor.nextStep)",
+            "media": {
+              "markdown": "media/walkthrough/ejercicio.md"
+            },
+            "completionEvents": [
+              "onCommand:tutor.nextStep",
+              "onCommand:tutor.testExercise"
+            ]
+          },
+          {
+            "id": "ai",
+            "title": "Conecta un tutor con IA (opcional)",
+            "description": "Elige un proveedor (OpenAI, Claude, Gemini, Ollama local…). Tus dudas se guardan en un `.md` de tu carpeta.\n[Configurar IA](command:tutor.configureAI)",
+            "media": {
+              "markdown": "media/walkthrough/ia.md"
+            },
+            "completionEvents": [
+              "onCommand:tutor.configureAI"
+            ]
+          },
+          {
+            "id": "focus",
+            "title": "Ajusta el entorno a ti",
+            "description": "Modo enfoque, temporizador, sin emojis, fuente legible, alto contraste…\n[Accesibilidad y enfoque](command:tutor.accessibility)",
+            "media": {
+              "markdown": "media/walkthrough/accesibilidad.md"
+            },
+            "completionEvents": [
+              "onCommand:tutor.accessibility"
+            ]
+          }
+        ]
+      }
+    ],
+    "keybindings": [
+      {
+        "command": "tutor.nextStep",
+        "key": "ctrl+alt+t n",
+        "mac": "cmd+alt+t n"
+      },
+      {
+        "command": "tutor.runExercise",
+        "key": "ctrl+alt+t r",
+        "mac": "cmd+alt+t r"
+      },
+      {
+        "command": "tutor.testExercise",
+        "key": "ctrl+alt+t t",
+        "mac": "cmd+alt+t t"
+      },
+      {
+        "command": "tutor.viewHint",
+        "key": "ctrl+alt+t h",
+        "mac": "cmd+alt+t h"
+      },
+      {
+        "command": "tutor.focusToggle",
+        "key": "ctrl+alt+t f",
+        "mac": "cmd+alt+t f"
+      },
+      {
+        "command": "tutor.parkThought",
+        "key": "ctrl+alt+t p",
+        "mac": "cmd+alt+t p"
+      }
+    ],
+    "jsonValidation": [
+      {
+        "fileMatch": "curso.json",
+        "url": "./schemas/curso.schema.json"
+      },
+      {
+        "fileMatch": "catalogo.json",
+        "url": "./schemas/catalogo.schema.json"
+      }
+    ]
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run typecheck && npm run bundle:prod",
+    "typecheck": "tsc -p ./ --noEmit",
+    "compile": "tsc -p ./",
+    "bundle": "esbuild src/extension.ts --bundle --outfile=dist/extension.js --external:vscode --format=cjs --platform=node --target=node18 --sourcemap",
+    "bundle:prod": "esbuild src/extension.ts --bundle --outfile=dist/extension.js --external:vscode --format=cjs --platform=node --target=node18 --minify",
+    "watch": "npm run bundle -- --watch",
+    "clean": "rm -rf out dist *.vsix",
+    "build": "npm run clean && npm run typecheck && npm run bundle",
+    "test": "npm run compile && node --test \"test/*.test.js\"",
+    "validate:examples": "npm run compile && node scripts/validate-course.js examples/repo/cursos/*",
+    "package": "vsce package --no-dependencies",
+    "install:ext": "npm run package && node scripts/ide.js install tutor-ide-$npm_package_version.vsix",
+    "publish:vsce": "vsce publish --no-dependencies",
+    "publish:ovsx": "ovsx publish --no-dependencies",
+    "dev": "npm run bundle && node scripts/ide.js dev",
+    "start": "npm run dev",
+    "example": "npm run bundle && node scripts/example.js",
+    "serve:examples": "node scripts/serve-examples.js"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@types/vscode": "1.82.0",
+    "@vscode/vsce": "^3.0.0",
+    "ajv": "^8.20.0",
+    "esbuild": "^0.25.12",
+    "ovsx": "^0.10.12",
+    "typescript": "^5.4.0"
+  }
+}

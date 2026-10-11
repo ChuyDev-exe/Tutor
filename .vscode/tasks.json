@@ -1,0 +1,6 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    { "type": "npm", "script": "bundle", "problemMatcher": "$esbuild", "label": "npm: bundle", "group": { "kind": "build", "isDefault": true } }
+  ]
+}

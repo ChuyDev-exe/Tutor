@@ -1,0 +1,5 @@
+# Se genera al probar la extensión
+*
+!.gitignore
+!.vscode
+!.vscode/**

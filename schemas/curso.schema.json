@@ -1,0 +1,100 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://tutor-ide/schemas/curso.schema.json",
+  "title": "Curso de Tutor IDE (curso.json)",
+  "description": "Manifiesto de un curso: capítulos, ejercicios con pruebas, evaluaciones y requisitos.",
+  "type": "object",
+  "required": ["id", "titulo", "capitulos"],
+  "additionalProperties": false,
+  "properties": {
+    "$schema": { "type": "string" },
+    "id": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]*$", "description": "Identificador único en minúsculas con guiones (ej. c-basico). Nombra carpetas y progreso; no lo cambies tras publicar." },
+    "titulo": { "type": "string", "minLength": 1, "description": "Nombre visible del curso." },
+    "descripcion": { "type": "string", "description": "Una o dos frases: qué se aprende y para quién." },
+    "nivel": { "type": "string", "description": "principiante, intermedio, avanzado…" },
+    "version": { "type": "string", "pattern": "^\\d+(\\.\\d+)*$", "description": "Versión numérica (1.0.0). Súbela al publicar cambios para ofrecer «Actualizar»." },
+    "manual": { "type": "string", "description": "Manual de configuración (.md) relativo a la carpeta del curso." },
+    "setup": { "type": "string", "description": "Script .sh que prepara el entorno. Se ejecuta solo con permiso del alumno." },
+    "requisitos": { "type": "array", "items": { "$ref": "#/definitions/requisito" }, "description": "Herramientas que el curso necesita en la máquina del alumno." },
+    "archivos": { "type": "array", "items": { "type": "string" }, "description": "Lista de archivos a descargar (opcional: si falta se reconstruye)." },
+    "capitulos": { "type": "array", "minItems": 1, "items": { "$ref": "#/definitions/capitulo" }, "description": "Capítulos en orden: cada uno se desbloquea al completar el anterior." }
+  },
+  "definitions": {
+    "requisito": {
+      "type": "object",
+      "required": ["comando"],
+      "additionalProperties": false,
+      "properties": {
+        "comando": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._+-]{0,63}$", "description": "Solo el nombre del ejecutable (gcc, python3…). Sin rutas, espacios ni argumentos." },
+        "nombre": { "type": "string", "description": "Nombre legible." },
+        "versionArg": { "type": "string", "pattern": "^(--?)?[A-Za-z0-9][A-Za-z0-9-]{0,31}$", "description": "Bandera para obtener la versión: --version (por defecto), -v, version…" },
+        "versionMinima": { "type": "string", "pattern": "^\\d+(\\.\\d+)*$", "description": "Versión mínima, ej. 3.8" },
+        "obligatorio": { "type": "boolean", "description": "Si es false solo avisa (true por defecto)." },
+        "instalar": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": { "darwin": { "type": "string" }, "linux": { "type": "string" }, "win32": { "type": "string" } },
+          "description": "Cómo instalarlo en cada sistema (texto para el alumno)."
+        }
+      }
+    },
+    "capitulo": {
+      "type": "object",
+      "required": ["id", "titulo", "archivo"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string", "minLength": 1, "description": "Único dentro del curso (c1, c2…)." },
+        "titulo": { "type": "string", "minLength": 1 },
+        "descripcion": { "type": "string" },
+        "archivo": { "type": "string", "description": "Manual del capítulo (.md): la lectura que el alumno ve primero." },
+        "tags": { "type": "array", "items": { "type": "string" } },
+        "minutos": { "type": "integer", "minimum": 1, "description": "Tiempo estimado de estudio." },
+        "ejercicios": { "type": "array", "items": { "$ref": "#/definitions/ejercicio" } },
+        "evaluacion": { "type": "array", "items": { "$ref": "#/definitions/pregunta" }, "description": "Preguntas de la evaluación del capítulo." },
+        "aprobacion": { "type": "integer", "minimum": 1, "maximum": 100, "description": "% mínimo para aprobar (70 por defecto)." },
+        "evaluacionRequerida": { "type": "boolean", "description": "Si es true no se completa el capítulo sin aprobar la evaluación." },
+        "barajar": { "type": "boolean", "description": "Mezclar preguntas y opciones (true por defecto)." }
+      }
+    },
+    "ejercicio": {
+      "type": "object",
+      "required": ["id", "titulo", "enunciado"],
+      "additionalProperties": false,
+      "dependencies": { "pruebas": ["lenguaje"] },
+      "properties": {
+        "id": { "type": "string", "minLength": 1, "description": "Único dentro del capítulo." },
+        "titulo": { "type": "string", "minLength": 1, "description": "También da nombre al archivo del alumno." },
+        "enunciado": { "type": "string", "description": "Archivo .md con el enunciado." },
+        "solucion": { "type": "string", "description": "Archivo .md con la solución (se desbloquea al resolver)." },
+        "pista": { "type": "string", "description": "Una sola pista (.md)." },
+        "pistas": { "type": "array", "items": { "type": "string" }, "description": "Pistas graduales (.md), de la más sutil a la más explícita." },
+        "lenguaje": { "type": "string", "enum": ["python", "javascript", "typescript", "bash", "c", "cpp", "go"], "description": "Lenguaje con ejecución integrada." },
+        "plantilla": { "type": "string", "description": "Archivo con el contenido inicial del archivo del alumno." },
+        "pruebas": { "type": "string", "description": "JSON de casos (stdin → stdout). Requiere «lenguaje»." },
+        "pruebasComando": { "type": "string", "description": "Alternativa: comando de shell (el alumno debe autorizarlo)." }
+      }
+    },
+    "pregunta": {
+      "type": "object",
+      "required": ["pregunta"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string" },
+        "tipo": { "type": "string", "enum": ["unica", "multiple", "vf", "texto"], "description": "unica (por defecto), multiple, vf (verdadero/falso) o texto (respuesta corta)." },
+        "pregunta": { "type": "string", "minLength": 1 },
+        "codigo": { "type": "string", "description": "Fragmento de código mostrado bajo la pregunta." },
+        "opciones": { "type": "array", "items": { "type": "string" } },
+        "respuesta": { "description": "unica: índice (desde 0) · vf: true/false." },
+        "respuestas": { "type": "array", "items": { "type": "integer", "minimum": 0 }, "description": "multiple: índices correctos." },
+        "aceptadas": { "type": "array", "items": { "type": "string", "minLength": 1 }, "description": "texto: respuestas válidas (sin distinguir mayúsculas ni acentos)." },
+        "explicacion": { "type": "string" }
+      },
+      "allOf": [
+        { "if": { "properties": { "tipo": { "enum": ["unica"] } } }, "then": { "required": ["opciones", "respuesta"], "properties": { "opciones": { "minItems": 2 }, "respuesta": { "type": "integer", "minimum": 0 } } } },
+        { "if": { "required": ["tipo"], "properties": { "tipo": { "const": "multiple" } } }, "then": { "required": ["opciones", "respuestas"], "properties": { "opciones": { "minItems": 2 }, "respuestas": { "minItems": 1 } } } },
+        { "if": { "required": ["tipo"], "properties": { "tipo": { "const": "vf" } } }, "then": { "required": ["respuesta"], "properties": { "respuesta": { "type": "boolean" } } } },
+        { "if": { "required": ["tipo"], "properties": { "tipo": { "const": "texto" } } }, "then": { "required": ["aceptadas"], "properties": { "aceptadas": { "minItems": 1 } } } }
+      ]
+    }
+  }
+}

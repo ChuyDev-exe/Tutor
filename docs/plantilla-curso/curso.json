@@ -1,0 +1,128 @@
+{
+  "$schema": "../../schemas/curso.schema.json",
+  "id": "mi-curso",
+  "titulo": "Mi curso (plantilla)",
+  "descripcion": "Plantilla mínima y válida de un curso de Tutor IDE: copia esta carpeta, cambia el contenido y valida con `node scripts/validate-course.js`.",
+  "nivel": "principiante",
+  "version": "1.0.0",
+  "manual": "MANUAL.md",
+  "setup": "setup.sh",
+  "requisitos": [
+    {
+      "comando": "python3",
+      "nombre": "Python 3",
+      "versionMinima": "3.8",
+      "obligatorio": true,
+      "instalar": {
+        "darwin": "brew install python",
+        "linux": "sudo apt install python3",
+        "win32": "winget install Python.Python.3"
+      }
+    }
+  ],
+  "capitulos": [
+    {
+      "id": "c1",
+      "titulo": "1. Entrada y salida",
+      "descripcion": "Leer datos con input() y mostrarlos con print().",
+      "archivo": "capitulos/01-entrada-salida.md",
+      "tags": ["input", "print"],
+      "minutos": 15,
+      "ejercicios": [
+        {
+          "id": "c1-e1",
+          "titulo": "Saludo",
+          "enunciado": "ejercicios/saludo-enunciado.md",
+          "solucion": "ejercicios/saludo-solucion.md",
+          "pistas": ["ejercicios/saludo-pista-1.md", "ejercicios/saludo-pista-2.md"],
+          "lenguaje": "python",
+          "plantilla": "ejercicios/saludo-plantilla.py",
+          "pruebas": "ejercicios/saludo-pruebas.json"
+        },
+        {
+          "id": "c1-e2",
+          "titulo": "Doble de un número",
+          "enunciado": "ejercicios/doble-enunciado.md",
+          "solucion": "ejercicios/doble-solucion.md",
+          "lenguaje": "python",
+          "plantilla": "ejercicios/doble-plantilla.py",
+          "pruebas": "ejercicios/doble-pruebas.json"
+        }
+      ],
+      "aprobacion": 70,
+      "evaluacion": [
+        {
+          "tipo": "unica",
+          "pregunta": "¿Qué función lee texto del teclado en Python?",
+          "opciones": ["print()", "input()", "read()", "scan()"],
+          "respuesta": 1,
+          "explicacion": "input() devuelve siempre un str."
+        },
+        {
+          "tipo": "multiple",
+          "pregunta": "¿Cuáles de estos son tipos básicos de Python? (marca todos los correctos)",
+          "opciones": ["int", "str", "float", "array"],
+          "respuestas": [0, 1, 2],
+          "explicacion": "array no es un tipo básico (existe list)."
+        },
+        {
+          "tipo": "vf",
+          "pregunta": "input() devuelve un número entero.",
+          "respuesta": false,
+          "explicacion": "Devuelve texto; hay que convertir con int()."
+        },
+        {
+          "tipo": "texto",
+          "pregunta": "¿Qué función convierte el texto \"7\" en el entero 7? (solo el nombre)",
+          "aceptadas": ["int", "int()"]
+        },
+        {
+          "pregunta": "¿Qué imprime este código?",
+          "codigo": "x = '3' + '4'\nprint(x)",
+          "opciones": ["7", "34", "Error", "3 4"],
+          "respuesta": 1,
+          "explicacion": "Con textos, + concatena."
+        }
+      ]
+    },
+    {
+      "id": "c2",
+      "titulo": "2. Decisiones",
+      "descripcion": "Condicionales con if / else.",
+      "archivo": "capitulos/02-decisiones.md",
+      "tags": ["if", "else"],
+      "minutos": 15,
+      "ejercicios": [
+        {
+          "id": "c2-e1",
+          "titulo": "Mayor de edad",
+          "enunciado": "ejercicios/mayor-enunciado.md",
+          "solucion": "ejercicios/mayor-solucion.md",
+          "lenguaje": "python",
+          "plantilla": "ejercicios/mayor-plantilla.py",
+          "pruebas": "ejercicios/mayor-pruebas.json"
+        }
+      ],
+      "aprobacion": 70,
+      "evaluacionRequerida": true,
+      "evaluacion": [
+        {
+          "tipo": "vf",
+          "pregunta": "En un if/elif/else se ejecuta como máximo una rama.",
+          "respuesta": true
+        },
+        {
+          "tipo": "texto",
+          "pregunta": "¿Qué palabra clave introduce la rama final cuando no se cumple ninguna condición?",
+          "aceptadas": ["else"]
+        },
+        {
+          "tipo": "unica",
+          "pregunta": "¿Qué operador compara igualdad?",
+          "opciones": ["=", "==", "=>", ":="],
+          "respuesta": 1
+        }
+      ]
+    }
+  ]
+}

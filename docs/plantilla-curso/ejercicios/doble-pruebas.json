@@ -1,0 +1,5 @@
+[
+  { "nombre": "21", "entrada": "21\n", "esperado": "42" },
+  { "nombre": "cero", "entrada": "0\n", "esperado": "0" },
+  { "nombre": "negativo", "entrada": "-4\n", "esperado": "-8" }
+]
