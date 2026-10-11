@@ -786,7 +786,7 @@
     "watch": "npm run bundle -- --watch",
     "clean": "rm -rf out dist *.vsix",
     "build": "npm run clean && npm run typecheck && npm run bundle",
-    "test": "npm run compile && node --test \"test/*.test.js\"",
+    "test": "npm run compile && node --test test/*.test.js",
     "validate:examples": "npm run compile && node scripts/validate-course.js examples/repo/cursos/*",
     "package": "vsce package --no-dependencies",
     "install:ext": "npm run package && node scripts/ide.js install tutor-ide-$npm_package_version.vsix",
