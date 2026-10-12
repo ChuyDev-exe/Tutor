@@ -16,19 +16,25 @@ jobs:
       - name: Comprobar publisher y tokens
         run: |
           if grep -q '"publisher": "your-publisher-id"' package.json; then echo "::error::Cambia \"publisher\" en package.json por tu ID del Marketplace"; exit 1; fi
-          if [ -z "$VSCE_PAT" ]; then echo "::error::Falta el secreto VSCE_PAT (Settings → Secrets and variables → Actions)"; exit 1; fi
           if [ -z "$OVSX_PAT" ]; then echo "::error::Falta el secreto OVSX_PAT (Settings → Secrets and variables → Actions)"; exit 1; fi
         env:
-          VSCE_PAT: ${{ secrets.VSCE_PAT }}
           OVSX_PAT: ${{ secrets.OVSX_PAT }}
       - run: npm ci
       - run: npm test
       - run: npm run package
-      - name: Visual Studio Marketplace
-        run: npx vsce publish --no-dependencies --packagePath *.vsix
-        env:
-          VSCE_PAT: ${{ secrets.VSCE_PAT }}
+      # el .vsix queda descargable en la ejecución (sirve para subirlo a mano al Marketplace)
+      - uses: actions/upload-artifact@v4
+        with:
+          name: vsix
+          path: "*.vsix"
       - name: Open VSX (Cursor, Antigravity, VSCodium…)
         run: npx ovsx publish *.vsix -p "$OVSX_PAT"
         env:
           OVSX_PAT: ${{ secrets.OVSX_PAT }}
+      # opcional: sin VSCE_PAT (o si el token no tiene permiso) se sube el .vsix a mano en
+      # https://marketplace.visualstudio.com/manage
+      - name: Visual Studio Marketplace
+        continue-on-error: true
+        run: npx vsce publish --no-dependencies --packagePath *.vsix
+        env:
+          VSCE_PAT: ${{ secrets.VSCE_PAT }}
