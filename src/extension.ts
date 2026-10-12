@@ -13,6 +13,7 @@ import { tutorState } from './state';
 import { renderMarkdown } from './md';
 import { checkRequirements, formatReport, openManual, runSetup, validateOnOpen } from './requirements';
 import { runSolution, runTestsFor, hasTests, runtimeFor, TestReport, RunResult } from './runner';
+import { runInTerminal } from './terminalRun';
 import {
   ensureChapterManual,
   ensureExerciseFile,
@@ -293,11 +294,12 @@ export function activate(context: vscode.ExtensionContext): void {
     if (blocking.length) return;
     try {
       const file = await openStudentFile(course, chapter, exercise);
-      const result = await runSolution(file, exercise.lenguaje);
+      const inTerminal = vscode.workspace.getConfiguration('tutor').get<boolean>('correrEnTerminal', true);
+      const result = inTerminal ? await runInTerminal(file, exercise.lenguaje, exercise.titulo) : await runSolution(file, exercise.lenguaje);
       chapters.recordExercise(course.id, chapter.id, exercise.id, { run: true });
       tutorContext = { ...tutorContext, courseId: course.id, chapterId: chapter.id, exerciseId: exercise.id, studentFile: file, lastOutput: summarizeRun(result) };
       statusBar.flashRun(result.ok);
-      logRun(exercise.titulo, result);
+      if (!inTerminal) logRun(exercise.titulo, result);
       if (result.ok) await settleUntested(course, chapter, exercise, true);
     } catch (err) {
       vscode.window.showErrorMessage(`Tutor: ${err instanceof Error ? err.message : err}`);

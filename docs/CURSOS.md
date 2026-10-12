@@ -10,7 +10,7 @@ Un curso es una carpeta con un `curso.json`. Se puede importar desde una carpeta
 |---|---|
 | Esquema JSON ([`schemas/curso.schema.json`](../schemas/curso.schema.json)) | Autocompletado y errores al escribir `curso.json` en el editor. Añade `"$schema": "../../schemas/curso.schema.json"` (ajusta la ruta) para usarlo fuera de este repositorio |
 | **Tutor: Validar estructura de un curso (autores)** · `node scripts/validate-course.js <carpeta>` | Revisa archivos referenciados, ids repetidos, pruebas, preguntas y requisitos |
-| `node scripts/check-solutions.js <carpeta>` | Extrae el primer bloque de código de cada `solucion` y comprueba que **pasa sus pruebas** |
+| `node scripts/check-solutions.js <carpeta>` | Extrae el primer bloque de código de cada `solucion` y comprueba que **pasa sus pruebas**. `--capitulo <id>` prueba solo un capítulo; `--omitir-faltantes` salta los ejercicios cuyos archivos aún no existen (útil mientras escribes el curso) |
 | `npm run validate:examples` | Valida los cursos de `examples/` |
 
 Un curso listo para publicar pasa `validate-course` sin errores y `check-solutions` sin fallos.

@@ -2,6 +2,18 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/).
 
+## [Sin publicar]
+
+### Añadido
+- **Correr en una terminal interactiva:** los programas que piden datos (`input()`, `scanf`…) ya funcionan; lo que escribes llega al programa y Ctrl+C lo detiene. La salida se sigue pasando al tutor. Ajuste `tutor.correrEnTerminal` (activado por defecto).
+- **Respuestas del tutor en streaming** con los tres tipos de proveedor (compatibles con OpenAI, Anthropic y Gemini). El límite de 90 s ahora cuenta el tiempo sin recibir datos, no la duración total.
+- `check-solutions.js`: opciones `--capitulo <id>` y `--omitir-faltantes`.
+- CI también en Windows.
+
+### Corregido
+- C y C++ funcionan en Windows (ya no dependen de `sh -c`) y se compilan **una sola vez** en vez de una vez por caso de prueba. Un error de compilación se muestra como tal.
+- En C/C++, el texto de un `printf` sin salto de línea aparece antes del `scanf` al correr en la terminal.
+
 ## [0.3.0] - 2026-10-10
 
 Reescritura de la experiencia de estudio: todo ocurre en el panel Tutor y en tu propio archivo.

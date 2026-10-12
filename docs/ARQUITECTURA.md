@@ -21,13 +21,14 @@ Resumen técnico de Tutor IDE para quien quiera mantenerla o ampliarla. El compo
 | | `repo.ts` · `searchProvider.ts` | Catálogo remoto, descarga con protección de rutas, comparación de versiones; vista lateral de búsqueda |
 | | `validator.ts` | Validación de la estructura de un curso (sin VS Code) |
 | Carpeta del alumno | `studentFolder.ts` | Crea manual, archivo del alumno, enunciado y pistas solo de capítulos desbloqueados; nombres seguros |
-| Ejecución | `runtimes.ts` | Tabla de lenguajes (comando, extensión, tiempo límite) |
-| | `runner.ts` | Ejecuta código y casos de prueba (stdin → stdout), con límite de salida y de tiempo; `pruebasComando` con permiso |
+| Ejecución | `runtimes.ts` | Tabla de lenguajes (comando, compilación previa, extensión, tiempo límite); sin `sh -c`, igual en los tres sistemas |
+| | `runner.ts` | Ejecuta código y casos de prueba (stdin → stdout), con límite de salida y de tiempo; `pruebasComando` con permiso. C/C++ se compilan una vez antes de correr o de todos los casos |
+| | `terminalRun.ts` | *Correr* en una pseudoterminal interactiva: la entrada del alumno llega al programa por stdin y la salida se captura para el tutor |
 | | `requirements.ts` | Verifica requisitos (`ejecutable --version`), ejecuta `setup.sh` tras mostrar su análisis, abre manuales |
 | Interfaz | `chaptersProvider.ts` | Árbol (siguiente paso → cursos → capítulos → ejercicios) y **toda la lógica de progreso** |
 | | `statusBar.ts` | Botones Enunciado / Correr / Pruebas / Pista-Solución, evaluación, progreso y temporizador |
 | | `quizView.ts` · `resultsView.ts` · `dashboard.ts` | Evaluaciones (se califican en el host), panel de resultados informativos y *Mi progreso* |
-| IA | `aiClient.ts` | Proveedores (OpenAI-compatible, Anthropic, Gemini), claves en `SecretStorage` |
+| IA | `aiClient.ts` | Proveedores (OpenAI-compatible, Anthropic, Gemini), claves en `SecretStorage`; respuestas en streaming (SSE) con límite de inactividad |
 | | `chatProvider.ts` · `prompt.ts` | Vista de chat y prompt de mentor (con contexto del alumno y dudas anteriores) |
 | | `doubts.ts` | Guarda cada pregunta y respuesta en `dudas-y-preguntas.md` |
 | Enfoque y accesibilidad | `a11y.ts` | CSS de accesibilidad para los webviews (en vivo), `notify` silencioso, perfiles |
@@ -112,5 +113,5 @@ El `store` contiene `cursos/<id>/` (curso instalado: soluciones, pruebas, `setup
 
 - **Nuevo lenguaje:** añadirlo a `runtimes.ts`, al `enum` de `schemas/curso.schema.json` y a la tabla de [CREAR-CURSO-CON-IA.md](CREAR-CURSO-CON-IA.md).
 - **Nuevo ajuste:** declararlo en una sección de `package.json`, añadirlo a `SECTIONS` de `preferences.ts` si debe verse en el panel, y a los perfiles si corresponde. Un test falla si se lee un ajuste sin declarar.
-- **Nuevo proveedor de IA:** una entrada en `PROVIDERS` de `aiClient.ts`; si no es compatible con OpenAI, una función `callX`.
+- **Nuevo proveedor de IA:** una entrada en `PROVIDERS` de `aiClient.ts`; si no es compatible con OpenAI, una función `xRequest` que arme la petición y sepa leer un evento del stream y una respuesta completa.
 - **Nuevo comando:** declararlo en `contributes.commands`, registrarlo en `extension.ts`; los tests verifican ambos extremos.

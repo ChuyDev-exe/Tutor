@@ -297,18 +297,24 @@
             "description": "Guarda cada pregunta al tutor y su respuesta en dudas-y-preguntas.md dentro de tu carpeta del curso.",
             "order": 2
           },
+          "tutor.correrEnTerminal": {
+            "type": "boolean",
+            "default": true,
+            "markdownDescription": "Ejecuta tu código en una terminal interactiva, para programas que piden datos (`input()`, `scanf`…). Desactivado, la salida va a *Salida → Tutor* y el programa no recibe entrada.",
+            "order": 3
+          },
           "tutor.repoCatalogUrl": {
             "type": "string",
             "default": "",
             "scope": "window",
             "markdownDescription": "URL (http/https) del `catalogo.json` del repositorio de cursos. Formato en el README.",
-            "order": 3
+            "order": 4
           },
           "tutor.contentPath": {
             "type": "string",
             "default": "",
             "description": "Carpeta extra con cursos locales (carpetas que contengan curso.json). Vacío = solo los cursos descargados.",
-            "order": 4
+            "order": 5
           }
         }
       },
@@ -786,7 +792,7 @@
     "watch": "npm run bundle -- --watch",
     "clean": "rm -rf out dist *.vsix",
     "build": "npm run clean && npm run typecheck && npm run bundle",
-    "test": "npm run compile && node --test test/*.test.js",
+    "test": "npm run compile && node --test \"test/*.test.js\"",
     "validate:examples": "npm run compile && node scripts/validate-course.js examples/repo/cursos/*",
     "package": "vsce package --no-dependencies",
     "install:ext": "npm run package && node scripts/ide.js install tutor-ide-$npm_package_version.vsix",

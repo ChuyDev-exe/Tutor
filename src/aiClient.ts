@@ -202,14 +202,22 @@ export async function listModels(
   }
 }
 
+/** Recibe el texto acumulado de la respuesta mientras llega (streaming). */
+export type OnText = (soFar: string) => void;
+
+/** Sin datos del proveedor durante este tiempo, se aborta la petición. */
+const IDLE_TIMEOUT_MS = 90_000;
+
 /**
  * Envía la conversación al proveedor activo. El system prompt del tutor
  * SIEMPRE viaja como primer mensaje/instrucción: el modo mentor no se puede saltar.
+ * Con `onText` la respuesta llega en streaming; si el proveedor no lo soporta, llega entera.
  */
 export async function chat(
   context: vscode.ExtensionContext,
   systemPrompt: string,
-  history: ChatMessage[]
+  history: ChatMessage[],
+  onText?: OnText
 ): Promise<string> {
   const { providerId, baseUrl, model, hasKey } = await getActiveConfig(context);
   const def = getProviderDef(providerId);
@@ -223,19 +231,49 @@ export async function chat(
   const apiKey = await getApiKey(context, providerId);
 
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 90_000);
-  try {
+  let timeout = setTimeout(() => controller.abort(), IDLE_TIMEOUT_MS);
+  const alive = () => {
+    clearTimeout(timeout);
+    timeout = setTimeout(() => controller.abort(), IDLE_TIMEOUT_MS);
+  };
+  const req = (() => {
     switch (def.kind) {
       case 'anthropic':
-        return await callAnthropic(baseUrl, model, apiKey, systemPrompt, history, controller);
+        return anthropicRequest(baseUrl, model, apiKey, systemPrompt, history);
       case 'gemini':
-        return await callGemini(baseUrl, model, apiKey, systemPrompt, history, controller);
+        return geminiRequest(baseUrl, model, apiKey, systemPrompt, history);
       default:
-        return await callOpenAI(baseUrl, model, apiKey, systemPrompt, history, controller);
+        return openAIRequest(baseUrl, model, apiKey, systemPrompt, history);
     }
+  })();
+  try {
+    const res = await fetch(req.url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...req.headers },
+      body: JSON.stringify(req.body),
+      signal: controller.signal,
+    });
+    if (!res.ok) {
+      throw new Error(`Error ${res.status}: ${(await res.text().catch(() => '')).slice(0, 300)}`);
+    }
+    let content: string;
+    // algunos servidores compatibles ignoran `stream` y responden JSON: se aceptan ambos
+    if (res.body && (res.headers.get('content-type') || '').includes('text/event-stream')) {
+      content = '';
+      for await (const data of readSSE(res.body, alive)) {
+        const piece = req.delta(data);
+        if (!piece) continue;
+        content += piece;
+        onText?.(content);
+      }
+    } else {
+      content = req.full(await res.json());
+    }
+    if (!content) throw new Error('La API no devolvió contenido.');
+    return content;
   } catch (err) {
     if (err instanceof Error && err.name === 'AbortError') {
-      throw new Error('La IA tardó demasiado en responder (90 s). Inténtalo de nuevo.');
+      throw new Error('La IA dejó de responder (90 s sin datos). Inténtalo de nuevo.');
     }
     throw err;
   } finally {
@@ -243,105 +281,102 @@ export async function chat(
   }
 }
 
-async function callOpenAI(
-  baseUrl: string,
-  model: string,
-  apiKey: string,
-  systemPrompt: string,
-  history: ChatMessage[],
-  controller: AbortController
-): Promise<string> {
-  const res = await fetch(`${baseUrl}/chat/completions`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      ...(apiKey ? { Authorization: `Bearer ${apiKey}` } : {}),
-    },
+interface ProviderRequest {
+  url: string;
+  headers: Record<string, string>;
+  body: unknown;
+  /** Texto de un evento del stream (data: …). */
+  delta: (data: any) => string | undefined;
+  /** Texto de una respuesta JSON completa (sin streaming). */
+  full: (data: any) => string;
+}
+
+/** Lee un cuerpo text/event-stream y devuelve el JSON de cada línea `data:`. */
+export async function* readSSE(body: ReadableStream<Uint8Array>, onChunk?: () => void): AsyncGenerator<any> {
+  const decoder = new TextDecoder();
+  let pending = '';
+  for await (const chunk of body as unknown as AsyncIterable<Uint8Array>) {
+    onChunk?.();
+    pending += decoder.decode(chunk, { stream: true });
+    const lines = pending.split(/\r?\n/);
+    pending = lines.pop() ?? '';
+    for (const line of lines) {
+      const data = parseSSELine(line);
+      if (data !== undefined) yield data;
+    }
+  }
+  const data = parseSSELine(pending);
+  if (data !== undefined) yield data;
+}
+
+function parseSSELine(line: string): any {
+  if (!line.startsWith('data:')) return undefined;
+  const payload = line.slice(5).trim();
+  if (!payload || payload === '[DONE]') return undefined;
+  try {
+    return JSON.parse(payload);
+  } catch {
+    return undefined;
+  }
+}
+
+function openAIRequest(baseUrl: string, model: string, apiKey: string, systemPrompt: string, history: ChatMessage[]): ProviderRequest {
+  return {
+    url: `${baseUrl}/chat/completions`,
+    headers: apiKey ? { Authorization: `Bearer ${apiKey}` } : {},
     // o1/o3/o4 y gpt-5 exigen max_completion_tokens y no aceptan temperature
-    body: JSON.stringify({
+    body: {
       model,
+      stream: true,
       messages: [{ role: 'system', content: systemPrompt }, ...history],
       ...(/^(o\d|gpt-5)/i.test(model.split('/').pop() || '')
         ? { max_completion_tokens: 1500 }
         : { temperature: 0.4, max_tokens: 800 }),
-    }),
-    signal: controller.signal,
-  });
-  if (!res.ok) {
-    throw new Error(`Error ${res.status}: ${(await res.text().catch(() => '')).slice(0, 300)}`);
-  }
-  const data: any = await res.json();
-  const content = data?.choices?.[0]?.message?.content;
-  if (!content) throw new Error('La API no devolvió contenido.');
-  return content;
+    },
+    delta: (d) => d?.choices?.[0]?.delta?.content,
+    full: (d) => d?.choices?.[0]?.message?.content || '',
+  };
 }
 
-async function callAnthropic(
-  baseUrl: string,
-  model: string,
-  apiKey: string,
-  systemPrompt: string,
-  history: ChatMessage[],
-  controller: AbortController
-): Promise<string> {
-  const res = await fetch(`${baseUrl.replace(/\/+$/, '')}/v1/messages`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-api-key': apiKey,
-      'anthropic-version': '2023-06-01',
-    },
-    body: JSON.stringify({
+function anthropicRequest(baseUrl: string, model: string, apiKey: string, systemPrompt: string, history: ChatMessage[]): ProviderRequest {
+  return {
+    url: `${baseUrl.replace(/\/+$/, '')}/v1/messages`,
+    headers: { 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },
+    body: {
       model,
+      stream: true,
       system: systemPrompt,
       messages: history.map((m) => ({ role: m.role, content: m.content })),
       max_tokens: 800,
       temperature: 0.4,
-    }),
-    signal: controller.signal,
-  });
-  if (!res.ok) {
-    throw new Error(`Error ${res.status}: ${(await res.text().catch(() => '')).slice(0, 300)}`);
-  }
-  const data: any = await res.json();
-  const content = (data?.content || [])
-    .filter((b: any) => b.type === 'text')
-    .map((b: any) => b.text)
-    .join('\n');
-  if (!content) throw new Error('La API no devolvió contenido.');
-  return content;
+    },
+    delta: (d) => {
+      if (d?.type === 'error') throw new Error(`Error: ${d.error?.message || 'el proveedor cortó la respuesta'}`);
+      return d?.type === 'content_block_delta' && d.delta?.type === 'text_delta' ? d.delta.text : undefined;
+    },
+    full: (d) =>
+      (d?.content || [])
+        .filter((b: any) => b.type === 'text')
+        .map((b: any) => b.text)
+        .join('\n'),
+  };
 }
 
-async function callGemini(
-  baseUrl: string,
-  model: string,
-  apiKey: string,
-  systemPrompt: string,
-  history: ChatMessage[],
-  controller: AbortController
-): Promise<string> {
-  const base = baseUrl.replace(/\/+$/, '');
-  const url = `${base}/v1beta/models/${encodeURIComponent(model)}:generateContent`;
-  const res = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
-    body: JSON.stringify({
+function geminiRequest(baseUrl: string, model: string, apiKey: string, systemPrompt: string, history: ChatMessage[]): ProviderRequest {
+  const text = (d: any) => (d?.candidates?.[0]?.content?.parts || []).map((p: any) => p.text || '').join('');
+  return {
+    url: `${baseUrl.replace(/\/+$/, '')}/v1beta/models/${encodeURIComponent(model)}:streamGenerateContent?alt=sse`,
+    headers: { 'x-goog-api-key': apiKey },
+    body: {
       systemInstruction: { parts: [{ text: systemPrompt }] },
       contents: history.map((m) => ({
         role: m.role === 'assistant' ? 'model' : 'user',
         parts: [{ text: m.content }],
       })),
       generationConfig: { temperature: 0.4, maxOutputTokens: 800 },
-    }),
-    signal: controller.signal,
-  });
-  if (!res.ok) {
-    throw new Error(`Error ${res.status}: ${(await res.text().catch(() => '')).slice(0, 300)}`);
-  }
-  const data: any = await res.json();
-  const content = data?.candidates?.[0]?.content?.parts
-    ?.map((p: any) => p.text)
-    .join('\n');
-  if (!content) throw new Error('La API no devolvió contenido.');
-  return content;
+    },
+    delta: text,
+    // sin SSE, streamGenerateContent devuelve un arreglo de fragmentos
+    full: (d) => (Array.isArray(d) ? d.map(text).join('') : text(d)),
+  };
 }

@@ -145,7 +145,14 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
       this.view?.webview.postMessage({ type: 'thinking', on: true });
 
       const systemPrompt = this.buildSystemPrompt();
-      const reply = await chat(this.context, systemPrompt, this.trimmedHistory());
+      // el markdown se renderiza a lo sumo cada 80 ms mientras llega la respuesta
+      let lastPaint = 0;
+      const reply = await chat(this.context, systemPrompt, this.trimmedHistory(), (soFar) => {
+        const now = Date.now();
+        if (now - lastPaint < 80) return;
+        lastPaint = now;
+        this.view?.webview.postMessage({ type: 'partial', html: renderMarkdown(soFar) });
+      });
 
       this.history.push({ role: 'assistant', content: reply });
       if (this.history.length > MAX_HISTORY) {
@@ -232,6 +239,7 @@ ${a11yHead(nonce)}
   const vscode = acquireVsCodeApi();
   const $ = (id) => document.getElementById(id);
   const messages = $('messages');
+  let live = null; // respuesta que está llegando en streaming
   const esc = (s) => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
   function add(role, html) {
@@ -275,8 +283,15 @@ ${a11yHead(nonce)}
       }
     } else if (msg.type === 'user') {
       add('user', esc(msg.text));
+    } else if (msg.type === 'partial') {
+      $('thinking').style.display = 'none';
+      if (!live) { add('assistant', ''); live = messages.lastElementChild; live.setAttribute('aria-busy', 'true'); }
+      const atBottom = messages.scrollHeight - messages.scrollTop - messages.clientHeight < 40;
+      live.innerHTML = msg.html;
+      if (atBottom) messages.scrollTop = messages.scrollHeight;
     } else if (msg.type === 'assistant') {
-      add('assistant', msg.html);
+      if (live) { live.innerHTML = msg.html; live.removeAttribute('aria-busy'); live = null; messages.scrollTop = messages.scrollHeight; }
+      else add('assistant', msg.html);
     } else if (msg.type === 'saved') {
       const n = document.createElement('div');
       n.className = 'note';
@@ -289,6 +304,7 @@ ${a11yHead(nonce)}
       $('sendBtn').disabled = msg.on;
       messages.scrollTop = messages.scrollHeight;
     } else if (msg.type === 'error') {
+      if (live) { live.remove(); live = null; }
       add('error', esc(msg.text).replace(/\\n/g, '<br>'));
     } else if (msg.type === 'clear') {
       messages.innerHTML = '';

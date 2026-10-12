@@ -6,7 +6,7 @@ import { Chapter, Course, Exercise } from './types';
 import { ensureExerciseFile } from './studentFolder';
 import { tutorState } from './state';
 
-import { RUNTIMES, runtimeFor } from './runtimes';
+import { COMPILE_TIMEOUT_MS, RUNTIMES, Runtime, runtimeFor } from './runtimes';
 export { runtimeFor };
 
 export interface RunResult {
@@ -95,6 +95,14 @@ function exec(
   });
 }
 
+/** Compila `file` si el lenguaje lo requiere. Devuelve un RunResult con el error si falla. */
+export async function compileIfNeeded(rt: Runtime, file: string): Promise<RunResult | undefined> {
+  if (!rt.compile) return undefined;
+  const res = await exec(rt.compile(file), { cwd: path.dirname(file), timeoutMs: COMPILE_TIMEOUT_MS });
+  if (res.ok) return undefined;
+  return { ...res, error: res.error ? `No se pudo compilar: ${res.error}` : 'Error de compilación' };
+}
+
 /** Ejecuta el archivo de solución del estudiante. */
 export async function runSolution(file: string, lenguaje?: string): Promise<RunResult> {
   const rt = runtimeFor(lenguaje);
@@ -108,6 +116,8 @@ export async function runSolution(file: string, lenguaje?: string): Promise<RunR
       error: `Sin runtime embebido para "${lenguaje || 'desconocido'}". Lenguajes soportados: ${Object.keys(RUNTIMES).join(', ')}. Usa un ejercicio con "pruebasComando" para otros lenguajes.`,
     };
   }
+  const compileError = await compileIfNeeded(rt, file);
+  if (compileError) return compileError;
   return exec(rt.cmd(file), { cwd: path.dirname(file), timeoutMs: rt.timeoutMs });
 }
 
@@ -140,6 +150,16 @@ export async function runJsonTests(
     };
   }
   const start = Date.now();
+  const compileError = await compileIfNeeded(rt, file);
+  if (compileError) {
+    return {
+      kind: 'cases',
+      total: cases.length,
+      passed: 0,
+      durationMs: Date.now() - start,
+      cases: [{ nombre: 'Compilación', ok: false, esperado: 'compilar sin errores', obtenido: '', stderr: compileError.stderr || compileError.error || '' }],
+    };
+  }
   const reports: TestCaseReport[] = [];
   let passed = 0;
   for (let i = 0; i < cases.length; i++) {
