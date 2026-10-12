@@ -71,7 +71,7 @@ test('C: un error de compilación se reporta como un caso, sin correr nada', { s
 });
 
 const { buildCommand, toolFor, RUNTIMES, dockerMode } = require('../out/runtimes');
-const dockerOk = spawnSync('docker', ['info', '--format', '{{.ServerVersion}}'], { stdio: 'ignore', timeout: 15000 }).status === 0;
+const dockerOk = (spawnSync('docker', ['info', '--format', '{{.OSType}}'], { encoding: 'utf8', timeout: 15000 }).stdout || '').trim() === 'linux';
 
 test('buildCommand: en local no cambia nada; en Docker monta la carpeta y usa rutas del contenedor', () => {
   const file = path.join(os.tmpdir(), 'curso', 'doble.py');
@@ -92,7 +92,7 @@ test('toolFor: el compilador para C/C++, el intérprete para el resto', () => {
   assert.equal(toolFor(RUNTIMES.javascript), 'node');
 });
 
-test('Docker: corre pruebas de C dentro de un contenedor', { skip: !dockerOk && 'Docker no disponible', timeout: 300_000 }, async () => {
+test('Docker: corre pruebas de C dentro de un contenedor', { skip: !dockerOk && 'Docker con contenedores Linux no disponible', timeout: 300_000 }, async () => {
   spawnSync('docker', ['pull', RUNTIMES.c.imagen], { stdio: 'ignore' });
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'tutor-docker-'));
   const file = path.join(dir, 'doble.c');

@@ -30,12 +30,31 @@ export async function hasTool(tool: string, versionArg = '--version'): Promise<b
   return ok;
 }
 
-export type DockerStatus = 'ok' | 'detenido' | 'no-instalado';
+export type DockerStatus = 'ok' | 'detenido' | 'no-instalado' | 'contenedores-windows';
 
 export async function dockerStatus(): Promise<DockerStatus> {
   if (!(await probe('docker', ['--version']))) return 'no-instalado';
   // `docker info` necesita el daemon: falla si Docker Desktop está cerrado o faltan permisos
-  return (await probe('docker', ['info', '--format', '{{.ServerVersion}}'], 15_000)) ? 'ok' : 'detenido';
+  const os = await output('docker', ['info', '--format', '{{.OSType}}'], 15_000);
+  if (os === undefined) return 'detenido';
+  // las imágenes de los lenguajes son de Linux: no corren con Docker en modo «contenedores Windows»
+  return os.trim() === 'windows' ? 'contenedores-windows' : 'ok';
+}
+
+/** Salida estándar de `<cmd> <args>`, o undefined si falla. */
+function output(cmd: string, args: string[], timeoutMs = 8000): Promise<string | undefined> {
+  return new Promise((resolve) => {
+    let out = '';
+    try {
+      const child = spawn(cmd, args, { stdio: ['ignore', 'pipe', 'ignore'] });
+      const timer = setTimeout(() => (child.kill('SIGKILL'), resolve(undefined)), timeoutMs);
+      child.stdout.on('data', (d) => (out += String(d)));
+      child.on('error', () => (clearTimeout(timer), resolve(undefined)));
+      child.on('close', (code) => (clearTimeout(timer), resolve(code === 0 ? out : undefined)));
+    } catch {
+      resolve(undefined);
+    }
+  });
 }
 
 const pulled = new Set<string>();
@@ -120,6 +139,8 @@ export async function ensureRuntime(context: vscode.ExtensionContext, lenguaje?:
       ? `También puedes correrlo en Docker sin instalar nada (imagen ${rt.imagen}).`
       : docker === 'detenido'
         ? 'Docker está instalado pero no responde: ábrelo y vuelve a intentarlo si prefieres usarlo.'
+        : docker === 'contenedores-windows'
+          ? 'Docker está en modo «contenedores Windows»: cámbialo a contenedores Linux (menú de Docker Desktop) para poder usarlo.'
         : 'Con Docker podrías correrlo sin instalar nada.';
   const pick = await vscode.window.showWarningMessage(
     `Para correr ${lang} se necesita ${tool}, que no está instalado.`,
@@ -146,6 +167,8 @@ async function useDocker(rt: Runtime): Promise<boolean> {
     vscode.window.showErrorMessage(
       status === 'detenido'
         ? 'Tutor: «tutor.entorno» es «docker», pero Docker no responde. Ábrelo y vuelve a intentarlo.'
+        : status === 'contenedores-windows'
+          ? 'Tutor: Docker está en modo «contenedores Windows». Cámbialo a contenedores Linux en Docker Desktop.'
         : 'Tutor: «tutor.entorno» es «docker», pero Docker no está instalado.'
     );
     return false;

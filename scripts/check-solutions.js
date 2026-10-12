@@ -56,7 +56,7 @@ for (const arg of dirs) {
         continue;
       }
       const md = fs.readFileSync(solPath, 'utf8');
-      const block = md.match(/```[\w+-]*\n([\s\S]*?)```/);
+      const block = md.match(/```[\w+-]*\r?\n([\s\S]*?)```/);
       checked++;
       if (!block) {
         console.log(`  ✖  ${label}: la solución no contiene un bloque de código`);

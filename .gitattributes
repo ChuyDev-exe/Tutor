@@ -1,0 +1,4 @@
+# Saltos de línea LF en todos los sistemas (los cursos y las pruebas comparan texto exacto)
+* text=auto eol=lf
+*.png binary
+*.vsix binary
