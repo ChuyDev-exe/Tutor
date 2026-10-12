@@ -2,6 +2,8 @@ name: Publicar
 on:
   push:
     tags: ["v*"]
+  # botón «Run workflow» en la pestaña Actions
+  workflow_dispatch:
 jobs:
   publish:
     runs-on: ubuntu-latest
@@ -11,6 +13,14 @@ jobs:
         with:
           node-version: 22
           cache: npm
+      - name: Comprobar publisher y tokens
+        run: |
+          if grep -q '"publisher": "your-publisher-id"' package.json; then echo "::error::Cambia \"publisher\" en package.json por tu ID del Marketplace"; exit 1; fi
+          if [ -z "$VSCE_PAT" ]; then echo "::error::Falta el secreto VSCE_PAT (Settings → Secrets and variables → Actions)"; exit 1; fi
+          if [ -z "$OVSX_PAT" ]; then echo "::error::Falta el secreto OVSX_PAT (Settings → Secrets and variables → Actions)"; exit 1; fi
+        env:
+          VSCE_PAT: ${{ secrets.VSCE_PAT }}
+          OVSX_PAT: ${{ secrets.OVSX_PAT }}
       - run: npm ci
       - run: npm test
       - run: npm run package
