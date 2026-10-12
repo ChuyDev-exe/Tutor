@@ -2,7 +2,7 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/).
 
-## [Sin publicar]
+## [0.4.0] - 2026-10-12
 
 ### Añadido
 - **Correr en una terminal interactiva:** los programas que piden datos (`input()`, `scanf`…) ya funcionan; lo que escribes llega al programa y Ctrl+C lo detiene. La salida se sigue pasando al tutor. Ajuste `tutor.correrEnTerminal` (activado por defecto).

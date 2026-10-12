@@ -47,7 +47,7 @@ La extensión se publica en **dos registros** para cubrir todos los editores:
 - [x] Ajustes agrupados en secciones con orden y descripciones; todo ajuste que lee el código está declarado (lo comprueba un test)
 - [x] Todos los comandos declarados están registrados y todos los referenciados por menús, atajos y guía existen (lo comprueba un test)
 - [x] URLs de repositorio
-- [ ] Sustituir el publisher
+- [x] Publisher (`ChuyExtension`)
 - [ ] Añadir capturas al README (https, no SVG): el panel con un curso, un ejercicio con su enunciado y el panel de enfoque
 - [ ] (Opcional) Traducir la interfaz: hoy todo está en español; no es obligatorio para publicar
 
