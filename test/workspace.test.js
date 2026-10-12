@@ -6,8 +6,9 @@ const path = require('path');
 const { install } = require('./vscode-stub');
 
 const ws = fs.mkdtempSync(path.join(os.tmpdir(), 'ws-'));
-const examples = path.join(__dirname, '..', 'examples', 'repo', 'cursos');
-install({ workspace: ws, config: { contentPath: examples } });
+// curso de prueba: la plantilla incluida en el repositorio
+const plantilla = path.join(__dirname, '..', 'docs', 'plantilla-curso');
+install({ workspace: ws, config: { contentPath: plantilla } });
 
 const { tutorState } = require('../out/state');
 const { loadCourses } = require('../out/content');
@@ -15,13 +16,13 @@ const folder = require('../out/studentFolder');
 const doubts = require('../out/doubts');
 
 tutorState.init({ globalStorageUri: { fsPath: path.join(ws, '_global') } });
-const course = loadCourses({}).find((c) => c.id === 'c-basico');
+const course = loadCourses({}).find((c) => c.id === 'mi-curso');
 
-test('el curso de ejemplo se carga con requisitos, setup y pistas graduales', () => {
+test('el curso de prueba se carga con requisitos, setup y pistas graduales', () => {
   assert.ok(course);
-  assert.equal(course.requisitos.length, 2);
+  assert.equal(course.requisitos.length, 1);
   assert.ok(course.setupFile.endsWith('setup.sh'));
-  assert.equal(course.capitulos[0].ejercicios[0].pistaFiles.length, 3);
+  assert.equal(course.capitulos[0].ejercicios[0].pistaFiles.length, 2);
 });
 
 test('la carpeta del alumno solo contiene capítulos desbloqueados', () => {
@@ -32,8 +33,8 @@ test('la carpeta del alumno solo contiene capítulos desbloqueados', () => {
   assert.ok(!entries.some((e) => e.startsWith('02-')), 'el capítulo 2 no debe existir en disco');
   const ch1 = fs.readdirSync(path.join(root, entries.find((e) => e.startsWith('01-'))));
   assert.ok(ch1.includes('manual.md'));
-  assert.ok(ch1.includes('suma-de-dos-numeros.c'));
-  assert.ok(ch1.includes('suma-de-dos-numeros.md'), 'enunciado junto al archivo');
+  assert.ok(ch1.includes('saludo.py'));
+  assert.ok(ch1.includes('saludo.md'), 'enunciado junto al archivo');
   assert.ok(!ch1.some((f) => f.includes('solucion')), 'la solución nunca va a la carpeta del alumno');
 });
 
@@ -46,17 +47,17 @@ test('el trabajo del alumno nunca se sobrescribe, y resetear deja copia .bak', (
   assert.equal(fs.readFileSync(file, 'utf8'), 'MI CÓDIGO');
   folder.resetExerciseFile(course, ch, ex);
   assert.equal(fs.readFileSync(file + '.bak', 'utf8'), 'MI CÓDIGO');
-  assert.match(fs.readFileSync(file, 'utf8'), /TODO/);
+  assert.match(fs.readFileSync(file, 'utf8'), /nombre = input\(\)/);
 });
 
 test('las pistas se revelan de forma acumulativa', () => {
   const ch = course.capitulos[0];
   const ex = ch.ejercicios[0];
   const one = fs.readFileSync(folder.writeHints(course, ch, ex, 1), 'utf8');
-  assert.match(one, /Pista 1 de 3/);
-  assert.doesNotMatch(one, /Pista 2 de 3/);
+  assert.match(one, /Pista 1 de 2/);
+  assert.doesNotMatch(one, /Pista 2 de 2/);
   const two = fs.readFileSync(folder.writeHints(course, ch, ex, 2), 'utf8');
-  assert.match(two, /Pista 2 de 3/);
+  assert.match(two, /Pista 2 de 2/);
 });
 
 test('dudas: guarda pregunta y respuesta, agrupa por día y aplana encabezados', () => {
@@ -68,10 +69,10 @@ test('dudas: guarda pregunta y respuesta, agrupa por día y aplana encabezados',
   const md = fs.readFileSync(file, 'utf8');
   assert.equal(path.basename(file), 'dudas-y-preguntas.md');
   assert.ok(file.startsWith(folder.studentRoot(course)));
-  assert.match(md, /^# Mis dudas y preguntas — C desde cero/);
+  assert.match(md, /^# Mis dudas y preguntas — Mi curso \(plantilla\)/);
   assert.equal((md.match(/^## 2026-10-10$/gm) || []).length, 1, 'un solo encabezado por día');
   assert.match(md, /^## 2026-10-11$/m);
-  assert.match(md, /### 14:32 · 1\. Hola, C › Suma de dos números/);
+  assert.match(md, /### 14:32 · 1\. Entrada y salida › Saludo/);
   assert.match(md, /^> Segunda línea$/m);
   assert.match(md, /^\*\*Título\*\*$/m, 'los # de la respuesta se aplanan');
   assert.deepEqual(doubts.recentQuestions(course, 2), ['Otra duda', 'Duda de otro día']);
@@ -83,13 +84,13 @@ test('dudas sin curso van a la raíz del workspace', () => {
 });
 
 test('.tutor es un archivo JSON con puntero al store', () => {
-  tutorState.registerCourse('c-basico', 'prueba');
+  tutorState.registerCourse('mi-curso', 'prueba');
   const f = path.join(ws, '.tutor');
   assert.ok(fs.statSync(f).isFile());
   const data = JSON.parse(fs.readFileSync(f, 'utf8'));
   assert.equal(data.version, 2);
   assert.ok(data.store.startsWith(path.join(ws, '_global')));
-  assert.ok(data.cursos['c-basico']);
+  assert.ok(data.cursos['mi-curso']);
 });
 
 test('ids de curso maliciosos no pueden escapar de la carpeta del workspace', () => {

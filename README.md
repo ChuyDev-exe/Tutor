@@ -101,7 +101,7 @@ Se editan en **Tutor: Preferencias…** o en *Ajustes → Tutor IDE* (4 seccione
 
 | Sección | Ajustes |
 |---|---|
-| Aprendizaje | `tutor.autoCompleteOnPass`, `tutor.guardarDudas`, `tutor.correrEnTerminal`, `tutor.repoCatalogUrl` (http/https), `tutor.contentPath` |
+| Aprendizaje | `tutor.autoCompleteOnPass`, `tutor.guardarDudas`, `tutor.correrEnTerminal`, `tutor.entorno` (auto · local · docker), `tutor.repoCatalogUrl` (http/https), `tutor.contentPath` |
 | IA del tutor | `tutor.provider`, `tutor.model`, `tutor.apiBaseUrl`, `tutor.language` (solo a nivel de usuario, salvo el idioma) |
 | Enfoque | `tutor.focus.modoEnfoque`, `.limpiarEditor`, `.unaPreguntaALaVez`, `.temporizadorAutomatico`, `.minutosTrabajo`, `.minutosDescanso`, `.metaDiaria`, `.avisoInactividad`, `.mensajes` |
 | Lectura y accesibilidad | `tutor.accesibilidad.tamanoTexto`, `.espaciado`, `.fuenteLegible`, `.anchoLectura`, `.altoContraste`, `.reducirMovimiento`, `.sinEmojis`, `.ocultarRacha` |

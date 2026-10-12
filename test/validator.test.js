@@ -5,13 +5,9 @@ const os = require('os');
 const path = require('path');
 const { validateCourseDir } = require('../out/validator');
 
-const examples = path.join(__dirname, '..', 'examples', 'repo', 'cursos');
-
-test('los cursos de ejemplo son válidos', () => {
-  for (const name of fs.readdirSync(examples)) {
-    const errors = validateCourseDir(path.join(examples, name)).filter((i) => i.nivel === 'error');
-    assert.deepEqual(errors, [], `${name}: ${JSON.stringify(errors)}`);
-  }
+test('la plantilla de curso es válida', () => {
+  const errors = validateCourseDir(path.join(__dirname, '..', 'docs', 'plantilla-curso')).filter((i) => i.nivel === 'error');
+  assert.deepEqual(errors, [], JSON.stringify(errors));
 });
 
 test('detecta archivos ausentes, ids repetidos y preguntas mal formadas', () => {

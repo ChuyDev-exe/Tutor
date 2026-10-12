@@ -10,8 +10,10 @@ const read = (p) => JSON.parse(fs.readFileSync(path.join(root, p), 'utf8'));
 const ajv = new Ajv({ allErrors: true, strict: false });
 const curso = ajv.compile(read('schemas/curso.schema.json'));
 const catalogo = ajv.compile(read('schemas/catalogo.schema.json'));
+// cursos de ejemplo opcionales (examples/repo) más la plantilla, que siempre está en el repositorio
+const examples = path.join(root, 'examples/repo/cursos');
 const courses = [
-  ...fs.readdirSync(path.join(root, 'examples/repo/cursos')).map((n) => `examples/repo/cursos/${n}`),
+  ...(fs.existsSync(examples) ? fs.readdirSync(examples).map((n) => `examples/repo/cursos/${n}`) : []),
   'docs/plantilla-curso',
 ];
 
@@ -22,7 +24,7 @@ for (const dir of courses) {
   });
 }
 
-test('el catálogo de ejemplo cumple el esquema', () => {
+test('el catálogo de ejemplo cumple el esquema', { skip: !fs.existsSync(path.join(root, 'examples/repo/catalogo.json')) && 'sin examples/repo' }, () => {
   assert.ok(catalogo(read('examples/repo/catalogo.json')), JSON.stringify(catalogo.errors));
 });
 
@@ -45,8 +47,9 @@ test('el esquema rechaza los errores típicos de una IA', () => {
 test('las soluciones de los cursos pasan sus propias pruebas', (t) => {
   const have = (cmd) => spawnSync(cmd, ['--version'], { stdio: 'ignore' }).status === 0;
   if (!have('python3')) return t.skip('python3 no está instalado');
-  const dirs = ['docs/plantilla-curso', 'examples/repo/cursos/python-basico'];
-  if (have('gcc')) dirs.push('examples/repo/cursos/c-basico');
+  const dirs = ['docs/plantilla-curso'];
+  if (fs.existsSync(path.join(examples, 'python-basico'))) dirs.push('examples/repo/cursos/python-basico');
+  if (have('gcc') && fs.existsSync(path.join(examples, 'c-basico'))) dirs.push('examples/repo/cursos/c-basico');
   const r = spawnSync('node', ['scripts/check-solutions.js', ...dirs], { cwd: root, encoding: 'utf8' });
   assert.equal(r.status, 0, r.stdout + r.stderr);
 });

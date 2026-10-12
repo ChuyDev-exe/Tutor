@@ -6,7 +6,7 @@ import { Chapter, Course, Exercise } from './types';
 import { ensureExerciseFile } from './studentFolder';
 import { tutorState } from './state';
 
-import { COMPILE_TIMEOUT_MS, RUNTIMES, Runtime, runtimeFor } from './runtimes';
+import { buildCommand, COMPILE_TIMEOUT_MS, DOCKER_EXTRA_MS, ExecMode, LOCAL, PreparedCommand, RUNTIMES, Runtime, runtimeFor, spawnArgs } from './runtimes';
 export { runtimeFor };
 
 export interface RunResult {
@@ -50,7 +50,7 @@ const MAX_OUTPUT = 200_000;
 const cap = (s: string): string => (s.length > MAX_OUTPUT ? s.slice(0, MAX_OUTPUT) + '\n…(salida truncada)' : s);
 
 function exec(
-  cmd: string[],
+  command: PreparedCommand,
   opts: { cwd?: string; stdin?: string; timeoutMs: number }
 ): Promise<RunResult> {
   return new Promise((resolve) => {
@@ -64,8 +64,10 @@ function exec(
       resolve({ ...r, durationMs: Date.now() - start });
     };
     try {
-      const child = spawn(cmd[0], cmd.slice(1), { cwd: opts.cwd, stdio: ['pipe', 'pipe', 'pipe'] });
+      const { cmd, args, shell } = spawnArgs(command.argv);
+      const child = spawn(cmd, args, { cwd: opts.cwd, shell, stdio: ['pipe', 'pipe', 'pipe'] });
       const timer = setTimeout(() => {
+        command.stop?.();
         child.kill('SIGKILL');
         finish({
           ok: false,
@@ -96,15 +98,17 @@ function exec(
 }
 
 /** Compila `file` si el lenguaje lo requiere. Devuelve un RunResult con el error si falla. */
-export async function compileIfNeeded(rt: Runtime, file: string): Promise<RunResult | undefined> {
+export async function compileIfNeeded(rt: Runtime, file: string, mode: ExecMode = LOCAL): Promise<RunResult | undefined> {
   if (!rt.compile) return undefined;
-  const res = await exec(rt.compile(file), { cwd: path.dirname(file), timeoutMs: COMPILE_TIMEOUT_MS });
+  const res = await exec(buildCommand(rt.compile, file, mode), { cwd: path.dirname(file), timeoutMs: COMPILE_TIMEOUT_MS });
   if (res.ok) return undefined;
   return { ...res, error: res.error ? `No se pudo compilar: ${res.error}` : 'Error de compilación' };
 }
 
 /** Ejecuta el archivo de solución del estudiante. */
-export async function runSolution(file: string, lenguaje?: string): Promise<RunResult> {
+const timeoutFor = (rt: Runtime, mode: ExecMode): number => rt.timeoutMs + (mode.kind === 'docker' ? DOCKER_EXTRA_MS : 0);
+
+export async function runSolution(file: string, lenguaje?: string, mode: ExecMode = LOCAL): Promise<RunResult> {
   const rt = runtimeFor(lenguaje);
   if (!rt) {
     return {
@@ -116,9 +120,9 @@ export async function runSolution(file: string, lenguaje?: string): Promise<RunR
       error: `Sin runtime embebido para "${lenguaje || 'desconocido'}". Lenguajes soportados: ${Object.keys(RUNTIMES).join(', ')}. Usa un ejercicio con "pruebasComando" para otros lenguajes.`,
     };
   }
-  const compileError = await compileIfNeeded(rt, file);
+  const compileError = await compileIfNeeded(rt, file, mode);
   if (compileError) return compileError;
-  return exec(rt.cmd(file), { cwd: path.dirname(file), timeoutMs: rt.timeoutMs });
+  return exec(buildCommand(rt.cmd, file, mode), { cwd: path.dirname(file), timeoutMs: timeoutFor(rt, mode) });
 }
 
 function normalize(s: string): string {
@@ -129,7 +133,8 @@ function normalize(s: string): string {
 export async function runJsonTests(
   file: string,
   lenguaje: string | undefined,
-  cases: TestCaseSpec[]
+  cases: TestCaseSpec[],
+  mode: ExecMode = LOCAL
 ): Promise<TestReport> {
   const rt = runtimeFor(lenguaje);
   if (!rt) {
@@ -150,7 +155,7 @@ export async function runJsonTests(
     };
   }
   const start = Date.now();
-  const compileError = await compileIfNeeded(rt, file);
+  const compileError = await compileIfNeeded(rt, file, mode);
   if (compileError) {
     return {
       kind: 'cases',
@@ -164,7 +169,7 @@ export async function runJsonTests(
   let passed = 0;
   for (let i = 0; i < cases.length; i++) {
     const c = cases[i];
-    const res = await exec(rt.cmd(file), { cwd: path.dirname(file), stdin: c.entrada, timeoutMs: rt.timeoutMs });
+    const res = await exec(buildCommand(rt.cmd, file, mode), { cwd: path.dirname(file), stdin: c.entrada, timeoutMs: timeoutFor(rt, mode) });
     const obtenido = normalize(res.stdout);
     let ok: boolean;
     let esperado: string;
@@ -192,7 +197,7 @@ export async function runCustomTests(cwd: string, command: string): Promise<Test
   const start = Date.now();
   const shell = process.platform === 'win32' ? 'cmd' : 'sh';
   const flag = process.platform === 'win32' ? '/c' : '-c';
-  const res = await exec([shell, flag, command], { cwd, timeoutMs: 60_000 });
+  const res = await exec({ argv: [shell, flag, command] }, { cwd, timeoutMs: 60_000 });
   const output = [res.stdout, res.stderr, res.error || ''].filter(Boolean).join('\n');
   return {
     kind: 'command',
@@ -217,7 +222,8 @@ export async function runTestsFor(
   context: vscode.ExtensionContext,
   course: Course,
   chapter: Chapter,
-  exercise: Exercise
+  exercise: Exercise,
+  mode: ExecMode = LOCAL
 ): Promise<TestReport> {
   if (exercise.pruebasComando) {
     // el comando viene del curso (contenido no confiable): se pide permiso la primera vez
@@ -243,7 +249,7 @@ export async function runTestsFor(
       return { kind: 'cases', total: 0, passed: 0, durationMs: 0, cases: [], output: `Archivo de pruebas vacío o ilegible: ${exercise.pruebas}` };
     }
     const file = ensureExerciseFile(course, chapter, exercise);
-    return runJsonTests(file, exercise.lenguaje, cases);
+    return runJsonTests(file, exercise.lenguaje, cases, mode);
   }
   return { kind: 'command', total: 0, passed: 0, durationMs: 0, output: 'Este ejercicio no tiene pruebas definidas.' };
 }

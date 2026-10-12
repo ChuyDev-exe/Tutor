@@ -13,7 +13,9 @@ import { tutorState } from './state';
 import { renderMarkdown } from './md';
 import { checkRequirements, formatReport, openManual, runSetup, validateOnOpen } from './requirements';
 import { runSolution, runTestsFor, hasTests, runtimeFor, TestReport, RunResult } from './runner';
+import type { ExecMode } from './runtimes';
 import { runInTerminal } from './terminalRun';
+import { ensureRuntime } from './environment';
 import {
   ensureChapterManual,
   ensureExerciseFile,
@@ -285,17 +287,30 @@ export function activate(context: vscode.ExtensionContext): void {
     }
   };
 
+  /**
+   * Elige dónde correr el ejercicio (herramienta local, Docker o instalarla) y, si es en local,
+   * comprueba los demás requisitos del curso. undefined = no se puede correr ahora.
+   */
+  const prepareEnvironment = async (course: Course, exercise: Exercise): Promise<ExecMode | undefined> => {
+    const mode = await ensureRuntime(context, exercise.lenguaje);
+    if (!mode) return undefined;
+    // en Docker la imagen ya trae lo necesario: los requisitos del curso son para la máquina del alumno
+    if (mode.kind === 'docker') return mode;
+    const blocking = (await validateOnOpen(course, true)).filter((s) => s.obligatorio && (!s.found || !s.versionOk));
+    return blocking.length ? undefined : mode;
+  };
+
   const runExercise = async (course?: Course, chapter?: Chapter, exercise?: Exercise): Promise<void> => {
     if (!course || !chapter || !exercise) {
       notify('Tutor: selecciona un ejercicio de programación para ejecutar código.');
       return;
     }
-    const blocking = (await validateOnOpen(course, true)).filter((s) => s.obligatorio && (!s.found || !s.versionOk));
-    if (blocking.length) return;
+    const mode = await prepareEnvironment(course, exercise);
+    if (!mode) return;
     try {
       const file = await openStudentFile(course, chapter, exercise);
       const inTerminal = vscode.workspace.getConfiguration('tutor').get<boolean>('correrEnTerminal', true);
-      const result = inTerminal ? await runInTerminal(file, exercise.lenguaje, exercise.titulo) : await runSolution(file, exercise.lenguaje);
+      const result = inTerminal ? await runInTerminal(file, exercise.lenguaje, exercise.titulo, mode) : await runSolution(file, exercise.lenguaje, mode);
       chapters.recordExercise(course.id, chapter.id, exercise.id, { run: true });
       tutorContext = { ...tutorContext, courseId: course.id, chapterId: chapter.id, exerciseId: exercise.id, studentFile: file, lastOutput: summarizeRun(result) };
       statusBar.flashRun(result.ok);
@@ -315,11 +330,11 @@ export function activate(context: vscode.ExtensionContext): void {
       notify(`El ejercicio «${exercise.titulo}» no tiene pruebas definidas.`);
       return;
     }
-    const blocking = (await validateOnOpen(course, true)).filter((s) => s.obligatorio && (!s.found || !s.versionOk));
-    if (blocking.length) return;
+    const mode = await prepareEnvironment(course, exercise);
+    if (!mode) return;
     try {
       const file = await openStudentFile(course, chapter, exercise);
-      const report = await runTestsFor(context, course, chapter, exercise);
+      const report = await runTestsFor(context, course, chapter, exercise, mode);
       chapters.recordExercise(course.id, chapter.id, exercise.id, { passed: report.passed, total: report.total });
       tutorContext = { ...tutorContext, courseId: course.id, chapterId: chapter.id, exerciseId: exercise.id, studentFile: file, lastOutput: summarizeTests(report) };
       statusBar.flashTests(report.passed, report.total);

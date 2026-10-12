@@ -31,7 +31,7 @@ La extensión se publica en **dos registros** para cubrir todos los editores:
    OVSX_PAT=… npx ovsx publish tutor-ide-<versión>.vsix -p "$OVSX_PAT"
    ```
    La primera vez en Open VSX: `npx ovsx create-namespace <publisher> -p "$OVSX_PAT"` y acepta el acuerdo de publicación en open-vsx.org.
-5. O automáticamente: sube una etiqueta `v<versión>` y el workflow `.github/workflows/publish.yml` corre las pruebas, empaqueta y publica en ambos registros (secretos `VSCE_PAT` y `OVSX_PAT` en GitHub). `ci.yml` ejecuta pruebas y empaquetado en cada PR (Linux y macOS).
+5. O automáticamente: sube una etiqueta `v<versión>` y el workflow `.github/workflows/publish.yml` corre las pruebas, empaqueta y publica en ambos registros (secretos `VSCE_PAT` y `OVSX_PAT` en GitHub). `ci.yml` ejecuta pruebas y empaquetado en cada PR (Linux, macOS y Windows).
 
 > El `.vsix` que pesa unos 130 KB incluye todo el código en `dist/extension.js`; no hay dependencias en tiempo de ejecución.
 
@@ -46,7 +46,8 @@ La extensión se publica en **dos registros** para cubrir todos los editores:
 - [x] Onboarding (walkthrough de 5 pasos), esquemas JSON incluidos en el paquete (`jsonValidation`) y pruebas automáticas (`npm test`)
 - [x] Ajustes agrupados en secciones con orden y descripciones; todo ajuste que lee el código está declarado (lo comprueba un test)
 - [x] Todos los comandos declarados están registrados y todos los referenciados por menús, atajos y guía existen (lo comprueba un test)
-- [ ] Sustituir publisher y URLs de repositorio
+- [x] URLs de repositorio
+- [ ] Sustituir el publisher
 - [ ] Añadir capturas al README (https, no SVG): el panel con un curso, un ejercicio con su enunciado y el panel de enfoque
 - [ ] (Opcional) Traducir la interfaz: hoy todo está en español; no es obligatorio para publicar
 

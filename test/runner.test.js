@@ -69,3 +69,34 @@ test('C: un error de compilación se reporta como un caso, sin correr nada', { s
   assert.equal(run.ok, false);
   assert.equal(run.error, 'Error de compilación');
 });
+
+const { buildCommand, toolFor, RUNTIMES, dockerMode } = require('../out/runtimes');
+const dockerOk = spawnSync('docker', ['info', '--format', '{{.ServerVersion}}'], { stdio: 'ignore', timeout: 15000 }).status === 0;
+
+test('buildCommand: en local no cambia nada; en Docker monta la carpeta y usa rutas del contenedor', () => {
+  const file = path.join(os.tmpdir(), 'curso', 'doble.py');
+  assert.deepEqual(buildCommand(RUNTIMES.python.cmd, file).argv, RUNTIMES.python.cmd(file));
+  const { argv, stop } = buildCommand(RUNTIMES.python.cmd, file, dockerMode(RUNTIMES.python));
+  assert.equal(argv[0], 'docker');
+  assert.ok(argv.includes(`type=bind,source=${path.dirname(file)},target=/work`));
+  assert.ok(argv.includes('--network') && argv.includes('none'), 'sin red por defecto');
+  assert.deepEqual(argv.slice(-2), [process.platform === 'win32' ? 'python' : 'python3', '/work/doble.py'].slice(-2));
+  assert.equal(typeof stop, 'function');
+  assert.ok(!buildCommand(RUNTIMES.typescript.cmd, file, dockerMode(RUNTIMES.typescript)).argv.includes('none'), 'npx necesita red');
+});
+
+test('toolFor: el compilador para C/C++, el intérprete para el resto', () => {
+  assert.equal(toolFor(RUNTIMES.c), 'gcc');
+  assert.equal(toolFor(RUNTIMES.cpp), 'g++');
+  assert.equal(toolFor(RUNTIMES.go), 'go');
+  assert.equal(toolFor(RUNTIMES.javascript), 'node');
+});
+
+test('Docker: corre pruebas de C dentro de un contenedor', { skip: !dockerOk && 'Docker no disponible', timeout: 300_000 }, async () => {
+  spawnSync('docker', ['pull', RUNTIMES.c.imagen], { stdio: 'ignore' });
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'tutor-docker-'));
+  const file = path.join(dir, 'doble.c');
+  fs.writeFileSync(file, '#include <stdio.h>\nint main(void){int n; scanf("%d",&n); printf("%d\\n", n*2); return 0;}\n');
+  const report = await runJsonTests(file, 'c', [{ entrada: '5', esperado: '10' }], dockerMode(RUNTIMES.c));
+  assert.equal(report.passed, 1, JSON.stringify(report.cases));
+});

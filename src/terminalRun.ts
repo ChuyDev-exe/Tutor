@@ -3,7 +3,7 @@ import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
 import { spawn, ChildProcess } from 'child_process';
-import { COMPILE_TIMEOUT_MS, runtimeFor } from './runtimes';
+import { buildCommand, COMPILE_TIMEOUT_MS, ExecMode, LOCAL, PreparedCommand, runtimeFor, spawnArgs } from './runtimes';
 import type { RunResult } from './runner';
 
 const MAX_CAPTURE = 200_000;
@@ -68,7 +68,7 @@ let current: vscode.Terminal | undefined;
  * Ejecuta el archivo del alumno en una terminal interactiva: lo que escribe llega al programa por stdin.
  * Compila antes si el lenguaje lo requiere. Captura stdout/stderr para el tutor. Ctrl+C lo detiene.
  */
-export function runInTerminal(file: string, lenguaje: string | undefined, title: string): Promise<RunResult> {
+export function runInTerminal(file: string, lenguaje: string | undefined, title: string, mode: ExecMode = LOCAL): Promise<RunResult> {
   const rt = runtimeFor(lenguaje);
   if (!rt) {
     return Promise.resolve({ ok: false, stdout: '', stderr: '', exitCode: null, durationMs: 0, error: `Sin runtime embebido para "${lenguaje || 'desconocido'}".` });
@@ -81,6 +81,7 @@ export function runInTerminal(file: string, lenguaje: string | undefined, title:
     const cwd = path.dirname(file);
     const env = { ...process.env, PYTHONUNBUFFERED: '1' };
     let child: ChildProcess | undefined;
+    let stop: (() => void) | undefined;
     let stdout = '';
     let stderr = '';
     let buffer = '';
@@ -95,9 +96,16 @@ export function runInTerminal(file: string, lenguaje: string | undefined, title:
       resolve({ ...r, durationMs: ms });
     };
 
-    const launch = (cmd: string[], onClose: (code: number | null) => void) => {
+    const kill = () => {
+      stop?.();
+      child?.kill('SIGKILL');
+    };
+
+    const launch = (command: PreparedCommand, onClose: (code: number | null) => void) => {
+      stop = command.stop;
       try {
-        child = spawn(cmd[0], cmd.slice(1), { cwd, env, stdio: ['pipe', 'pipe', 'pipe'] });
+        const { cmd, args, shell } = spawnArgs(command.argv);
+        child = spawn(cmd, args, { cwd, env, shell, stdio: ['pipe', 'pipe', 'pipe'] });
       } catch (err) {
         finish({ ok: false, stdout, stderr, exitCode: null, error: err instanceof Error ? err.message : String(err) });
         return;
@@ -119,17 +127,23 @@ export function runInTerminal(file: string, lenguaje: string | undefined, title:
 
     const runProgram = () => {
       start = Date.now();
-      launch(rt.cmd(file), (code) => finish({ ok: code === 0, stdout, stderr, exitCode: code, error: code === null ? 'Ejecución detenida' : undefined }));
+      launch(buildCommand(rt.cmd, file, mode), (code) => finish({ ok: code === 0, stdout, stderr, exitCode: code, error: code === null ? 'Ejecución detenida' : undefined }));
     };
 
     const pty: vscode.Pseudoterminal = {
       onDidWrite: writeEmitter.event,
       open: () => {
-        write(`${DIM}── Correr: ${title} · escribe aquí si el programa pide datos · Ctrl+C lo detiene ──${RESET}\n`);
-        if (!rt.compile) return runProgram();
+        const where = mode.kind === 'docker' ? ` · en Docker (${mode.imagen})` : '';
+        write(`${DIM}── Correr: ${title}${where} · escribe aquí si el programa pide datos · Ctrl+C lo detiene ──${RESET}\n`);
+        const compile = rt.compile;
+        if (!compile) return runProgram();
         write(`${DIM}Compilando…${RESET}\n`);
-        const compileCmd = [...rt.compile(file), '-include', unbufferedHeader()];
-        const timer = setTimeout(() => child?.kill('SIGKILL'), COMPILE_TIMEOUT_MS);
+        const header = unbufferedHeader();
+        const compileCmd =
+          mode.kind === 'docker'
+            ? buildCommand((f) => [...compile(f), '-include', '/tutor/unbuffered.h'], file, mode, [[header, '/tutor/unbuffered.h']])
+            : buildCommand((f) => [...compile(f), '-include', header], file, mode);
+        const timer = setTimeout(kill, COMPILE_TIMEOUT_MS);
         launch(compileCmd, (code) => {
           clearTimeout(timer);
           if (code !== 0) return finish({ ok: false, stdout, stderr, exitCode: code, error: 'Error de compilación' });
@@ -139,7 +153,7 @@ export function runInTerminal(file: string, lenguaje: string | undefined, title:
         });
       },
       close: () => {
-        if (!settled) child?.kill('SIGKILL');
+        if (!settled) kill();
         writeEmitter.dispose();
       },
       handleInput: (data) => {
@@ -148,7 +162,7 @@ export function runInTerminal(file: string, lenguaje: string | undefined, title:
         buffer = r.buffer;
         if (r.echo) writeEmitter.fire(r.echo);
         for (const line of r.lines) child.stdin?.write(line + '\n');
-        if (r.interrupt) child.kill('SIGKILL');
+        if (r.interrupt) kill();
         else if (r.eof) {
           if (buffer) child.stdin?.write(buffer);
           buffer = '';

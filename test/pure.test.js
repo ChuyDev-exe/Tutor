@@ -81,10 +81,8 @@ test('analyzeScript: el hash cambia si cambia el script', () => {
   assert.equal(analyzeScript('echo a').sha, analyzeScript('echo a').sha);
 });
 
-test('el setup del curso de ejemplo no tiene riesgos', () => {
+test('el setup de la plantilla de curso no tiene riesgos', () => {
   const fs = require('fs'), path = require('path');
-  for (const n of ['c-basico', 'python-basico', 'demo-requisitos']) {
-    const t = fs.readFileSync(path.join(__dirname, '..', 'examples/repo/cursos', n, 'setup.sh'), 'utf8');
-    assert.deepEqual(analyzeScript(t).riesgos.filter((r) => r.nivel !== 'info'), [], n);
-  }
+  const t = fs.readFileSync(path.join(__dirname, '..', 'docs/plantilla-curso/setup.sh'), 'utf8');
+  assert.deepEqual(analyzeScript(t).riesgos.filter((r) => r.nivel !== 'info'), []);
 });

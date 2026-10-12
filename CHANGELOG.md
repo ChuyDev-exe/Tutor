@@ -8,10 +8,13 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/).
 - **Correr en una terminal interactiva:** los programas que piden datos (`input()`, `scanf`…) ya funcionan; lo que escribes llega al programa y Ctrl+C lo detiene. La salida se sigue pasando al tutor. Ajuste `tutor.correrEnTerminal` (activado por defecto).
 - **Respuestas del tutor en streaming** con los tres tipos de proveedor (compatibles con OpenAI, Anthropic y Gemini). El límite de 90 s ahora cuenta el tiempo sin recibir datos, no la duración total.
 - `check-solutions.js`: opciones `--capitulo <id>` y `--omitir-faltantes`.
+- **Entorno de ejecución automático:** al correr o probar, si la herramienta del lenguaje (python3, node, gcc, go…) está instalada se usa; si no, el tutor ofrece **instalarla** (brew, apt, dnf, pacman o winget, en una terminal visible) o **correr en Docker** sin instalar nada (la imagen se descarga la primera vez y la elección se recuerda por lenguaje). Ajuste `tutor.entorno`: `auto`, `local` o `docker`. En Docker el código corre sin red, con 512 MB de memoria y, en Linux, con tu usuario.
 - CI también en Windows.
 
 ### Corregido
 - C y C++ funcionan en Windows (ya no dependen de `sh -c`) y se compilan **una sola vez** en vez de una vez por caso de prueba. Un error de compilación se muestra como tal.
+- TypeScript (`npx`) en Windows.
+- Las pruebas automáticas usan la plantilla `docs/plantilla-curso` en lugar de `examples/repo`, que no está en el repositorio (fallaban en la CI de los tres sistemas).
 - En C/C++, el texto de un `printf` sin salto de línea aparece antes del `scanf` al correr en la terminal.
 
 ## [0.3.0] - 2026-10-10

@@ -8,13 +8,13 @@
   "author": {
     "name": "Tutor IDE contributors"
   },
-  "homepage": "https://github.com/your-user/tutor-ide#readme",
+  "homepage": "https://github.com/ChuyDev-exe/Tutor#readme",
   "repository": {
     "type": "git",
-    "url": "https://github.com/your-user/tutor-ide.git"
+    "url": "https://github.com/ChuyDev-exe/Tutor.git"
   },
   "bugs": {
-    "url": "https://github.com/your-user/tutor-ide/issues"
+    "url": "https://github.com/ChuyDev-exe/Tutor/issues"
   },
   "qna": "marketplace",
   "pricing": "Free",
@@ -303,18 +303,34 @@
             "markdownDescription": "Ejecuta tu código en una terminal interactiva, para programas que piden datos (`input()`, `scanf`…). Desactivado, la salida va a *Salida → Tutor* y el programa no recibe entrada.",
             "order": 3
           },
+          "tutor.entorno": {
+            "type": "string",
+            "enum": [
+              "auto",
+              "local",
+              "docker"
+            ],
+            "enumDescriptions": [
+              "Usa lo que tengas instalado (python3, node, gcc…); si falta, te pregunta si instalarlo o usar Docker",
+              "Solo lo instalado en tu equipo",
+              "Siempre en un contenedor de Docker (no hace falta instalar el lenguaje)"
+            ],
+            "default": "auto",
+            "description": "Dónde se ejecuta tu código.",
+            "order": 4
+          },
           "tutor.repoCatalogUrl": {
             "type": "string",
             "default": "",
             "scope": "window",
             "markdownDescription": "URL (http/https) del `catalogo.json` del repositorio de cursos. Formato en el README.",
-            "order": 4
+            "order": 5
           },
           "tutor.contentPath": {
             "type": "string",
             "default": "",
             "description": "Carpeta extra con cursos locales (carpetas que contengan curso.json). Vacío = solo los cursos descargados.",
-            "order": 5
+            "order": 6
           }
         }
       },
