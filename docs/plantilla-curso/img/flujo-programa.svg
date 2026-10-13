@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="520" height="120" viewBox="0 0 520 120" font-family="Segoe UI, Helvetica, Arial, sans-serif">
+  <title>Entrada, proceso y salida</title>
+  <defs>
+    <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto">
+      <path d="M0 0 10 5 0 10z" fill="#6b7280"/>
+    </marker>
+  </defs>
+  <rect width="520" height="120" rx="10" fill="#f8fafc"/>
+  <g font-size="15" text-anchor="middle">
+    <rect x="20" y="30" width="130" height="60" rx="8" fill="#dbeafe" stroke="#3b82f6"/>
+    <text x="85" y="57" fill="#1e3a8a" font-weight="600">Entrada</text>
+    <text x="85" y="77" fill="#1e3a8a" font-size="13">input()</text>
+    <rect x="195" y="30" width="130" height="60" rx="8" fill="#fef3c7" stroke="#f59e0b"/>
+    <text x="260" y="57" fill="#78350f" font-weight="600">Proceso</text>
+    <text x="260" y="77" fill="#78350f" font-size="13">int(), +, …</text>
+    <rect x="370" y="30" width="130" height="60" rx="8" fill="#dcfce7" stroke="#22c55e"/>
+    <text x="435" y="57" fill="#14532d" font-weight="600">Salida</text>
+    <text x="435" y="77" fill="#14532d" font-size="13">print()</text>
+  </g>
+  <g stroke="#6b7280" stroke-width="2" marker-end="url(#a)">
+    <line x1="152" y1="60" x2="191" y2="60"/>
+    <line x1="327" y1="60" x2="366" y2="60"/>
+  </g>
+</svg>

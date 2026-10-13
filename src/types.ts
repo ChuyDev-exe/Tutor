@@ -16,7 +16,14 @@ export interface Exercise {
   plantillaFile?: string;
 }
 
-export type QuizTipo = 'unica' | 'multiple' | 'vf' | 'texto';
+export type QuizTipo = 'unica' | 'multiple' | 'vf' | 'texto' | 'arrastrar';
+
+/** Elemento o zona de una pregunta de arrastrar: texto, imagen o ambos. */
+export interface QuizItem {
+  texto: string;
+  /** Ruta absoluta dentro del curso o URL https. */
+  imagen?: string;
+}
 
 /**
  * Pregunta de evaluación.
@@ -24,6 +31,7 @@ export type QuizTipo = 'unica' | 'multiple' | 'vf' | 'texto';
  *  - multiple: varias correctas (`respuestas`: índices); se acierta con el conjunto exacto
  *  - vf:       verdadero/falso (`respuesta`: true | false)
  *  - texto:    respuesta corta; `aceptadas` lista variantes válidas (sin distinguir mayúsculas)
+ *  - arrastrar: cada elemento se arrastra a su zona (`correctas[i]`: zona del elemento i); se acierta si todos están bien
  */
 export interface QuizQuestion {
   id: string;
@@ -31,9 +39,15 @@ export interface QuizQuestion {
   pregunta: string;
   /** Fragmento de código opcional mostrado bajo el enunciado. */
   codigo?: string;
+  /** Imagen opcional de la pregunta (ruta absoluta dentro del curso o URL https). */
+  imagen?: string;
   opciones: string[];
-  /** Índices correctos (unica/vf: un solo elemento). */
+  /** Índices correctos (unica/vf: un solo elemento) · arrastrar: zona de cada elemento. */
   correctas: number[];
+  /** arrastrar: zonas de destino. */
+  zonas?: QuizItem[];
+  /** arrastrar: elementos que el alumno coloca. */
+  elementos?: QuizItem[];
   /** Respuestas válidas para tipo texto. */
   aceptadas: string[];
   explicacion?: string;
@@ -100,6 +114,23 @@ export interface RepoCourseEntry {
   version?: string;
   ruta?: string; // ruta base relativa al catálogo (default: cursos/<id>)
   archivos?: string[]; // lista de archivos relativos a la ruta base
+  /** URL absoluta (con / final) de la carpeta del curso. La resuelve la extensión, no el catálogo. */
+  baseUrl?: string;
+  /** Página web del curso (p. ej. la carpeta en GitHub). */
+  webUrl?: string;
+  /** Resumen del curso.json (temario, duración…), si ya se leyó. */
+  resumen?: CourseSummary;
+}
+
+/** Temario y cifras de un curso, calculados a partir de su curso.json. */
+export interface CourseSummary {
+  capitulos: { titulo: string; descripcion: string; minutos?: number; ejercicios: number; preguntas: number }[];
+  /** Suma de los minutos estimados de los capítulos (0 si ninguno los declara). */
+  minutos: number;
+  ejercicios: number;
+  preguntas: number;
+  requisitos: string[];
+  lenguajes: string[];
 }
 
 export interface RepoCatalog {

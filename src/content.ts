@@ -53,6 +53,15 @@ function resolveContentRoots(): { dir: string; source: Course['source'] }[] {
   return roots;
 }
 
+/** Imagen de una pregunta: URL https o archivo existente dentro del curso (si no, se ignora). */
+function quizAsset(dir: string, rel: string): string | undefined {
+  if (/^https:\/\//i.test(rel)) return rel;
+  const root = path.resolve(dir);
+  const abs = path.resolve(root, rel);
+  if (!abs.startsWith(root + path.sep) || !fs.existsSync(abs)) return undefined;
+  return abs;
+}
+
 function loadCourse(dir: string, source: Course['source']): Course | undefined {
   try {
     const raw = JSON.parse(fs.readFileSync(path.join(dir, 'curso.json'), 'utf8'));
@@ -70,7 +79,7 @@ function loadCourse(dir: string, source: Course['source']): Course | undefined {
         pruebasComando: e.pruebasComando ? String(e.pruebasComando) : undefined,
         plantillaFile: e.plantilla ? path.join(dir, e.plantilla) : undefined,
       }));
-      const evaluacion = parseQuiz(c.evaluacion);
+      const evaluacion = parseQuiz(c.evaluacion, (rel) => quizAsset(dir, rel));
       capitulos.push({
         id: c.id,
         titulo: c.titulo,

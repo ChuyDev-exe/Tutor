@@ -127,3 +127,22 @@ test('estadísticas de enfoque: se acumulan por día y el reinicio total las bor
   tutorState.resetProgress();
   assert.deepEqual(tutorState.focusToday(), { minutos: 0, sesiones: 0, ejercicios: 0 });
 });
+
+test('las imágenes de la documentación se copian a la carpeta del alumno y los enlaces se reescriben', () => {
+  const root = folder.syncStudentFolder(course, (i) => i === 0);
+  const manual = folder.manualFileFor(course, course.capitulos[0]);
+  const text = fs.readFileSync(manual, 'utf8');
+  const m = /!\[[^\]]*\]\(([^)]+)\)/.exec(text);
+  assert.ok(m, 'el manual conserva la imagen');
+  assert.equal(m[1], '../imagenes/img/flujo-programa.svg');
+  assert.ok(fs.existsSync(path.resolve(path.dirname(manual), m[1])), 'la imagen existe junto al manual');
+  assert.ok(fs.existsSync(path.join(root, 'imagenes', 'img', 'flujo-programa.svg')));
+});
+
+test('las imágenes de las evaluaciones se resuelven dentro del curso', () => {
+  const q = course.capitulos[0].evaluacion.find((x) => x.tipo === 'arrastrar');
+  assert.ok(q, 'la plantilla incluye una pregunta de arrastrar');
+  assert.ok(path.isAbsolute(q.imagen) && fs.existsSync(q.imagen));
+  assert.ok(q.elementos.some((e) => e.imagen && fs.existsSync(e.imagen)));
+  assert.deepEqual(q.zonas.map((z) => z.texto), ['Entrada', 'Proceso', 'Salida']);
+});

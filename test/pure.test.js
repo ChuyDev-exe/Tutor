@@ -86,3 +86,71 @@ test('el setup de la plantilla de curso no tiene riesgos', () => {
   const t = fs.readFileSync(path.join(__dirname, '..', 'docs/plantilla-curso/setup.sh'), 'utf8');
   assert.deepEqual(analyzeScript(t).riesgos.filter((r) => r.nivel !== 'info'), []);
 });
+
+const { summarizeCourse, formatMinutes, parseGithubRepo, markdownImageRefs, rewriteMarkdownImages } = require('../out/pure');
+
+test('parseQuiz: arrastrar acepta zonas por índice o por texto y resuelve imágenes', () => {
+  const [q, ...rest] = parseQuiz([
+    { tipo: 'arrastrar', pregunta: 'clasifica', imagen: 'img/a.png',
+      zonas: ['Mamíferos', { texto: 'Aves', imagen: 'img/ave.png' }],
+      elementos: [{ texto: 'Perro', zona: 'mamiferos' }, { imagen: 'img/aguila.png', zona: 1 }] },
+    { tipo: 'arrastrar', pregunta: 'zona inexistente', zonas: ['a', 'b'], elementos: [{ texto: 'x', zona: 'c' }] },
+    { tipo: 'arrastrar', pregunta: 'una sola zona', zonas: ['a'], elementos: [{ texto: 'x', zona: 0 }] },
+  ], (rel) => (rel === 'img/ausente.png' ? undefined : `/curso/${rel}`));
+  assert.equal(rest.length, 0, 'las preguntas inválidas se descartan');
+  assert.equal(q.tipo, 'arrastrar');
+  assert.equal(q.imagen, '/curso/img/a.png');
+  assert.deepEqual(q.correctas, [0, 1]);
+  assert.deepEqual(q.zonas, [{ texto: 'Mamíferos' }, { texto: 'Aves', imagen: '/curso/img/ave.png' }]);
+  assert.deepEqual(q.elementos[1], { texto: '', imagen: '/curso/img/aguila.png' });
+});
+
+test('gradeQuestion: arrastrar exige cada elemento en su zona', () => {
+  const [q] = parseQuiz([{ tipo: 'arrastrar', pregunta: 'p', zonas: ['A', 'B'], elementos: [{ texto: '1', zona: 0 }, { texto: '2', zona: 1 }, { texto: '3', zona: 1 }] }]);
+  assert.ok(gradeQuestion(q, [0, 1, 1]));
+  assert.ok(!gradeQuestion(q, [0, 1, 0]));
+  assert.ok(!gradeQuestion(q, [0, 1, -1]), 'un elemento sin colocar no aprueba');
+  assert.ok(!gradeQuestion(q, [0, 1]));
+  assert.ok(!gradeQuestion(q, 'texto'));
+  assert.ok(!gradeQuestion(q, undefined));
+});
+
+test('summarizeCourse y formatMinutes: temario, duración y cifras', () => {
+  const r = summarizeCourse({
+    requisitos: [{ comando: 'node', nombre: 'Node.js', versionMinima: '16' }],
+    capitulos: [
+      { titulo: 'Uno', minutos: 20, ejercicios: [{ lenguaje: 'javascript' }, {}], evaluacion: [{}, {}, {}] },
+      { titulo: 'Dos', minutos: 75, descripcion: 'd' },
+      { titulo: 'Tres' },
+    ],
+  });
+  assert.equal(r.minutos, 95);
+  assert.equal(r.ejercicios, 2);
+  assert.equal(r.preguntas, 3);
+  assert.deepEqual(r.requisitos, ['Node.js ≥ 16']);
+  assert.deepEqual(r.lenguajes, ['javascript']);
+  assert.equal(r.capitulos[2].minutos, undefined);
+  assert.equal(formatMinutes(95), '1 h 35 min');
+  assert.equal(formatMinutes(120), '2 h');
+  assert.equal(formatMinutes(40), '40 min');
+  assert.equal(formatMinutes(0), '');
+});
+
+test('parseGithubRepo: owner/repo, rama y URL; rechaza lo demás', () => {
+  assert.deepEqual(parseGithubRepo('ChuyDev-exe/Tutor-Cursos'), { owner: 'ChuyDev-exe', repo: 'Tutor-Cursos', ref: 'HEAD' });
+  assert.deepEqual(parseGithubRepo('a/b@dev'), { owner: 'a', repo: 'b', ref: 'dev' });
+  assert.deepEqual(parseGithubRepo('https://github.com/a/b.git'), { owner: 'a', repo: 'b', ref: 'HEAD' });
+  assert.deepEqual(parseGithubRepo('https://github.com/a/b/tree/main/'), { owner: 'a', repo: 'b', ref: 'main' });
+  for (const bad of ['', 'a', 'a/b/c', '../x', 'a/..', 'https://evil.com/a/b', 'a b/c']) assert.equal(parseGithubRepo(bad), undefined, bad);
+});
+
+test('imágenes en Markdown: detecta solo rutas locales y las reescribe', () => {
+  const md = '![a](../img/x.png)\n![b](https://x.com/y.png)\n<img src="dibujo.svg" width="40">\n![c](<img/con espacio.png> "t")\n[enlace](doc.md)\n![d](#ancla.png)';
+  assert.deepEqual(markdownImageRefs(md), ['../img/x.png', 'img/con espacio.png', 'dibujo.svg']);
+  const out = rewriteMarkdownImages(md, (ref) => 'R/' + ref);
+  assert.match(out, /!\[a\]\(R\/\.\.\/img\/x\.png\)/);
+  assert.match(out, /!\[b\]\(https:\/\/x\.com\/y\.png\)/);
+  assert.match(out, /<img src="R\/dibujo\.svg" width="40">/);
+  assert.match(out, /\[enlace\]\(doc\.md\)/);
+  assert.match(out, /!\[c\]\(<R\/img\/con espacio\.png> "t"\)/);
+});

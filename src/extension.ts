@@ -27,6 +27,7 @@ import {
   writeHints,
   studentRoot,
   syncStudentFolder,
+  safeName,
 } from './studentFolder';
 import { broadcastA11y, focusMode, notify, pickProfiles } from './a11y';
 import { FocusTimer } from './focus';
@@ -37,6 +38,7 @@ import { parkThought, thoughtsPath } from './thoughts';
 import { buildDashboard } from './dashboard';
 import { formatIssues, validateCourseDir } from './validator';
 import { ensureDoubtsFile } from './doubts';
+import { copyMarkdown } from './mdAssets';
 
 let tutorContext: TutorContext = {};
 
@@ -719,7 +721,17 @@ export function activate(context: vscode.ExtensionContext): void {
         notify('Este ejercicio no tiene solución publicada.');
         return;
       }
-      await vscode.commands.executeCommand('markdown.showPreviewToSide', vscode.Uri.file(exercise.solucionFile));
+      // copia en el almacén (nunca en la carpeta del alumno) con sus imágenes al lado,
+      // para que la vista previa de Markdown pueda mostrarlas
+      const views = path.join(tutorState.storeDir(), 'vistas', safeName(course.id));
+      const file = path.join(views, `solucion-${safeName(chapter.id)}-${safeName(exercise.id)}.md`);
+      try {
+        copyMarkdown(exercise.solucionFile, file, course.root, path.join(views, 'imagenes'));
+      } catch {
+        await vscode.commands.executeCommand('markdown.showPreviewToSide', vscode.Uri.file(exercise.solucionFile));
+        return;
+      }
+      await vscode.commands.executeCommand('markdown.showPreviewToSide', vscode.Uri.file(file));
     }),
 
     vscode.commands.registerCommand('tutor.openChapterQuiz', (item?: ChapterItem) => {

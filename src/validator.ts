@@ -1,7 +1,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { RUNTIMES } from './runtimes';
-import { isSafeCommand, isSafeVersionArg } from './pure';
+import { isSafeCommand, isSafeVersionArg, markdownImageRefs, zoneIndex } from './pure';
 
 export interface Issue {
   nivel: 'error' | 'aviso';
@@ -29,6 +29,26 @@ export function validateCourseDir(dir: string): Issue[] {
     }
     return true;
   };
+  /** Imagen de una pregunta: URL https o archivo del curso. */
+  const image = (v: unknown, what: string) => {
+    if (v === undefined) return;
+    if (typeof v !== 'string' || !v.trim()) return err(`${what}: «imagen» debe ser una ruta o una URL https.`);
+    if (/^https:\/\//i.test(v)) return;
+    if (/^[a-z][a-z0-9+.-]*:/i.test(v)) return err(`${what}: «imagen» solo admite rutas del curso o URLs https («${v}»).`);
+    exists(v, `${what} › imagen`);
+  };
+  /** Imágenes locales de un Markdown del curso: avisa de las que faltan o salen del curso. */
+  const mdImages = (rel: unknown, what: string) => {
+    if (typeof rel !== 'string') return;
+    const abs = path.resolve(dir, rel);
+    let text = '';
+    try { text = fs.readFileSync(abs, 'utf8'); } catch { return; }
+    for (const ref of markdownImageRefs(text)) {
+      const img = path.resolve(path.dirname(abs), ref.split(/[?#]/)[0]);
+      if (!img.startsWith(path.resolve(dir) + path.sep)) err(`${what}: la imagen «${ref}» sale de la carpeta del curso.`);
+      else if (!fs.existsSync(img)) warn(`${what}: no existe la imagen «${ref}».`);
+    }
+  };
   const dup = (ids: string[], what: string) => {
     const seen = new Set<string>();
     for (const id of ids) {
@@ -47,7 +67,7 @@ export function validateCourseDir(dir: string): Issue[] {
   if (!raw.id) warn('curso.json: falta «id» (se usará el nombre de la carpeta).');
   if (!raw.titulo) warn('curso.json: falta «titulo».');
   if (raw.version !== undefined && !/^\d+(\.\d+)*$/.test(String(raw.version))) err(`«version» debe ser numérica tipo 1.2.0 (es «${raw.version}»).`);
-  if (raw.manual) exists(raw.manual, 'manual');
+  if (raw.manual && exists(raw.manual, 'manual')) mdImages(raw.manual, 'manual');
   if (raw.setup) exists(raw.setup, 'setup');
   for (const r of raw.requisitos ?? []) {
     if (!r || typeof r.comando !== 'string' || !r.comando.trim()) err('requisitos: cada requisito necesita «comando».');
@@ -64,7 +84,7 @@ export function validateCourseDir(dir: string): Issue[] {
     const cn = `Capítulo «${ch?.titulo ?? ch?.id}»`;
     if (!ch?.id) err(`${cn}: falta «id».`);
     if (!ch?.archivo) err(`${cn}: falta «archivo» (manual del capítulo).`);
-    else exists(ch.archivo, `${cn} › archivo`);
+    else if (exists(ch.archivo, `${cn} › archivo`)) mdImages(ch.archivo, `${cn} › archivo`);
     if (ch.aprobacion !== undefined && !(ch.aprobacion >= 1 && ch.aprobacion <= 100)) err(`${cn}: «aprobacion» debe estar entre 1 y 100.`);
     if (ch.evaluacionRequerida && !(ch.evaluacion?.length)) err(`${cn}: «evaluacionRequerida» sin preguntas en «evaluacion».`);
 
@@ -74,11 +94,15 @@ export function validateCourseDir(dir: string): Issue[] {
       const en = `${cn} › ejercicio «${e?.titulo ?? e?.id}»`;
       if (!e?.id) err(`${en}: falta «id».`);
       if (!e?.titulo) warn(`${en}: falta «titulo».`);
-      if (!exists(e?.enunciado, `${en} › enunciado`)) if (!e?.enunciado) err(`${en}: falta «enunciado».`);
-      if (e?.solucion) exists(e.solucion, `${en} › solucion`);
+      if (!exists(e?.enunciado, `${en} › enunciado`)) {
+        if (!e?.enunciado) err(`${en}: falta «enunciado».`);
+      } else mdImages(e.enunciado, `${en} › enunciado`);
+      if (e?.solucion) {
+        if (exists(e.solucion, `${en} › solucion`)) mdImages(e.solucion, `${en} › solucion`);
+      }
       else warn(`${en}: sin «solucion» (el alumno no tendrá nada que ver al resolverlo).`);
       const pistas: string[] = Array.isArray(e?.pistas) ? e.pistas : e?.pista ? [e.pista] : [];
-      pistas.forEach((p, i) => exists(p, `${en} › pista ${i + 1}`));
+      pistas.forEach((p, i) => exists(p, `${en} › pista ${i + 1}`) && mdImages(p, `${en} › pista ${i + 1}`));
       if (e?.plantilla) exists(e.plantilla, `${en} › plantilla`);
       if (e?.lenguaje && !RUNTIMES[String(e.lenguaje).toLowerCase()] && !e.pruebasComando) {
         warn(`${en}: lenguaje «${e.lenguaje}» sin runtime embebido; usa «pruebasComando» o uno de: ${Object.keys(RUNTIMES).join(', ')}.`);
@@ -109,8 +133,28 @@ export function validateCourseDir(dir: string): Issue[] {
       const qn = `${cn} › pregunta ${i + 1}`;
       if (!String(q?.pregunta ?? '').trim()) return err(`${qn}: falta «pregunta».`);
       const tipo = q.tipo ?? 'unica';
-      if (!['unica', 'multiple', 'vf', 'texto'].includes(tipo)) return err(`${qn}: tipo «${tipo}» desconocido.`);
-      if (tipo === 'vf') {
+      if (!['unica', 'multiple', 'vf', 'texto', 'arrastrar'].includes(tipo)) return err(`${qn}: tipo «${tipo}» desconocido.`);
+      image(q.imagen, qn);
+      if (tipo === 'arrastrar') {
+        const zonas: any[] = Array.isArray(q.zonas) ? q.zonas : [];
+        const elementos: any[] = Array.isArray(q.elementos) ? q.elementos : [];
+        if (zonas.length < 2) err(`${qn}: «arrastrar» necesita al menos 2 «zonas».`);
+        zonas.forEach((z, k) => {
+          const zt = typeof z === 'object' && z ? z : { texto: z };
+          if (!String(zt.texto ?? '').trim() && !zt.imagen) err(`${qn} › zona ${k + 1}: necesita «texto» o «imagen».`);
+          image(zt.imagen, `${qn} › zona ${k + 1}`);
+        });
+        if (!elementos.length) err(`${qn}: «arrastrar» necesita «elementos».`);
+        elementos.forEach((e, j) => {
+          const en = `${qn} › elemento ${j + 1}`;
+          if (!e || typeof e !== 'object') return err(`${en}: debe ser un objeto { "texto", "zona" }.`);
+          if (!String(e.texto ?? '').trim() && !e.imagen) err(`${en}: necesita «texto» o «imagen».`);
+          image(e.imagen, en);
+          if (zoneIndex(e.zona, zonas) < 0) err(`${en}: «zona» debe ser el índice (0-${Math.max(0, zonas.length - 1)}) o el texto de una zona.`);
+        });
+        const used = new Set(elementos.map((e) => zoneIndex(e?.zona, zonas)));
+        if (zonas.length >= 2 && elementos.length && used.size < 2) warn(`${qn}: todos los elementos van a la misma zona.`);
+      } else if (tipo === 'vf') {
         if (typeof q.respuesta !== 'boolean') err(`${qn}: «respuesta» debe ser true o false.`);
       } else if (tipo === 'texto') {
         const acc = Array.isArray(q.aceptadas) ? q.aceptadas : q.respuesta ? [q.respuesta] : [];

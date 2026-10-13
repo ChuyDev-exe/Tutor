@@ -80,9 +80,12 @@
       "additionalProperties": false,
       "properties": {
         "id": { "type": "string" },
-        "tipo": { "type": "string", "enum": ["unica", "multiple", "vf", "texto"], "description": "unica (por defecto), multiple, vf (verdadero/falso) o texto (respuesta corta)." },
+        "tipo": { "type": "string", "enum": ["unica", "multiple", "vf", "texto", "arrastrar"], "description": "unica (por defecto), multiple, vf (verdadero/falso), texto (respuesta corta) o arrastrar (llevar cada elemento a su zona)." },
         "pregunta": { "type": "string", "minLength": 1 },
         "codigo": { "type": "string", "description": "Fragmento de código mostrado bajo la pregunta." },
+        "imagen": { "$ref": "#/definitions/imagen" },
+        "zonas": { "type": "array", "items": { "$ref": "#/definitions/zona" }, "description": "arrastrar: zonas de destino (texto, o { texto, imagen })." },
+        "elementos": { "type": "array", "items": { "$ref": "#/definitions/elemento" }, "description": "arrastrar: elementos a colocar, cada uno con la «zona» a la que pertenece." },
         "opciones": { "type": "array", "items": { "type": "string" } },
         "respuesta": { "description": "unica: índice (desde 0) · vf: true/false." },
         "respuestas": { "type": "array", "items": { "type": "integer", "minimum": 0 }, "description": "multiple: índices correctos." },
@@ -93,8 +96,40 @@
         { "if": { "properties": { "tipo": { "enum": ["unica"] } } }, "then": { "required": ["opciones", "respuesta"], "properties": { "opciones": { "minItems": 2 }, "respuesta": { "type": "integer", "minimum": 0 } } } },
         { "if": { "required": ["tipo"], "properties": { "tipo": { "const": "multiple" } } }, "then": { "required": ["opciones", "respuestas"], "properties": { "opciones": { "minItems": 2 }, "respuestas": { "minItems": 1 } } } },
         { "if": { "required": ["tipo"], "properties": { "tipo": { "const": "vf" } } }, "then": { "required": ["respuesta"], "properties": { "respuesta": { "type": "boolean" } } } },
-        { "if": { "required": ["tipo"], "properties": { "tipo": { "const": "texto" } } }, "then": { "required": ["aceptadas"], "properties": { "aceptadas": { "minItems": 1 } } } }
+        { "if": { "required": ["tipo"], "properties": { "tipo": { "const": "texto" } } }, "then": { "required": ["aceptadas"], "properties": { "aceptadas": { "minItems": 1 } } } },
+        { "if": { "required": ["tipo"], "properties": { "tipo": { "const": "arrastrar" } } }, "then": { "required": ["zonas", "elementos"], "properties": { "zonas": { "minItems": 2 }, "elementos": { "minItems": 1 } } } }
       ]
+    },
+    "imagen": {
+      "type": "string",
+      "minLength": 1,
+      "not": { "pattern": "^(?!https://)[A-Za-z][A-Za-z0-9+.-]*:" },
+      "description": "Imagen (png, jpg, svg, gif, webp): ruta relativa a la carpeta del curso (p. ej. img/diagrama.png) o URL https."
+    },
+    "zona": {
+      "oneOf": [
+        { "type": "string", "minLength": 1 },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "anyOf": [{ "required": ["texto"] }, { "required": ["imagen"] }],
+          "properties": { "texto": { "type": "string" }, "imagen": { "$ref": "#/definitions/imagen" } }
+        }
+      ]
+    },
+    "elemento": {
+      "type": "object",
+      "required": ["zona"],
+      "additionalProperties": false,
+      "anyOf": [{ "required": ["texto"] }, { "required": ["imagen"] }],
+      "properties": {
+        "texto": { "type": "string" },
+        "imagen": { "$ref": "#/definitions/imagen" },
+        "zona": {
+          "oneOf": [{ "type": "integer", "minimum": 0 }, { "type": "string", "minLength": 1 }],
+          "description": "Zona correcta: su índice (desde 0) o su texto."
+        }
+      }
     }
   }
 }

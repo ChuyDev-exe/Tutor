@@ -60,3 +60,31 @@ test('rechaza requisitos con comandos peligrosos', () => {
   assert.match(msgs, /«comando» inválido/);
   assert.match(msgs, /«versionArg» inválido/);
 });
+
+test('valida preguntas de arrastrar e imágenes de evaluaciones y documentación', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'curso-'));
+  fs.mkdirSync(path.join(dir, 'img'));
+  fs.writeFileSync(path.join(dir, 'img', 'ok.png'), '');
+  fs.writeFileSync(path.join(dir, 'cap.md'), '# Cap\n\n![bien](img/ok.png)\n![falta](img/falta.png)\n![fuera](../../etc/x.png)\n');
+  fs.writeFileSync(path.join(dir, 'curso.json'), JSON.stringify({
+    id: 'x', titulo: 'X',
+    capitulos: [{ id: 'c1', titulo: 'Uno', archivo: 'cap.md', evaluacion: [
+      { tipo: 'arrastrar', pregunta: 'bien', imagen: 'img/ok.png', zonas: ['A', { texto: 'B', imagen: 'img/ok.png' }],
+        elementos: [{ texto: '1', zona: 'A' }, { texto: '2', zona: 1 }] },
+      { tipo: 'arrastrar', pregunta: 'zona mala', zonas: ['A'], elementos: [{ texto: '1', zona: 'Z' }, { zona: 0 }] },
+      { tipo: 'unica', pregunta: 'imagen ausente', imagen: 'img/no.png', opciones: ['a', 'b'], respuesta: 0 },
+      { tipo: 'unica', pregunta: 'esquema raro', imagen: 'file:///etc/passwd', opciones: ['a', 'b'], respuesta: 0 },
+    ] }],
+  }));
+  const issues = validateCourseDir(dir);
+  const errs = issues.filter((i) => i.nivel === 'error').map((i) => i.mensaje).join('\n');
+  const warns = issues.filter((i) => i.nivel === 'aviso').map((i) => i.mensaje).join('\n');
+  assert.doesNotMatch(errs, /pregunta 1/, 'la pregunta bien formada no da errores');
+  assert.match(errs, /pregunta 2: «arrastrar» necesita al menos 2 «zonas»/);
+  assert.match(errs, /pregunta 2 › elemento 1: «zona» debe ser/);
+  assert.match(errs, /pregunta 2 › elemento 2: necesita «texto» o «imagen»/);
+  assert.match(errs, /pregunta 3 › imagen: no existe «img\/no.png»/);
+  assert.match(errs, /pregunta 4: «imagen» solo admite/);
+  assert.match(errs, /la imagen «..\/..\/etc\/x.png» sale de la carpeta/);
+  assert.match(warns, /no existe la imagen «img\/falta.png»/);
+});

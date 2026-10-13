@@ -2,6 +2,15 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/).
 
+## [Sin publicar]
+
+### Añadido
+- **Buscar → Repositorio** lista al abrirse los cursos del repositorio de GitHub [ChuyDev-exe/Tutor-Cursos](https://github.com/ChuyDev-exe/Tutor-Cursos) (ajuste `tutor.repoGithub`; `tutor.repoCatalogUrl` sigue funcionando y tiene prioridad). Cada tarjeta muestra nivel, duración y número de capítulos.
+- **Ficha del curso:** al hacer clic en un curso se abre una ventana con nombre, descripción, duración total, capítulos, ejercicios, preguntas, requisitos y el **temario** (minutos, ejercicios y evaluación de cada capítulo), con los botones *Descargar/Actualizar* y *Ver en GitHub*. Se cierra con Esc y se puede usar solo con teclado.
+- **Evaluaciones gráficas (`"tipo": "arrastrar"`):** el alumno arrastra cada elemento a la zona a la que pertenece; se aprueba si todos están en su sitio. También funciona con clic o teclado. Al calificar, cada elemento mal colocado indica su zona correcta.
+- **Imágenes** en las evaluaciones (`imagen` en preguntas, zonas y elementos) y en la documentación (manuales, enunciados, pistas, soluciones y `MANUAL.md`): se copian junto a los archivos del alumno para que la vista previa las muestre.
+- `validate-course` y el esquema validan `arrastrar` y avisan de imágenes inexistentes o fuera del curso. La plantilla de curso incluye un ejemplo de ambas cosas.
+
 ## [0.4.0] - 2026-10-12
 
 ### Añadido

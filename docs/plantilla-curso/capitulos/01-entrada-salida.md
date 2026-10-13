@@ -2,6 +2,8 @@
 
 Un programa suele **leer** datos, **procesarlos** y **mostrar** un resultado.
 
+![Entrada, proceso y salida](../img/flujo-programa.svg)
+
 ```python
 nombre = input()
 print("Hola,", nombre)

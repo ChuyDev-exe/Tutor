@@ -319,18 +319,25 @@
             "description": "Dónde se ejecuta tu código.",
             "order": 4
           },
+          "tutor.repoGithub": {
+            "type": "string",
+            "default": "ChuyDev-exe/Tutor-Cursos",
+            "scope": "window",
+            "markdownDescription": "Repositorio de GitHub con los cursos (`owner/repo`, `owner/repo@rama` o su URL). Cada carpeta con un `curso.json` aparece en la vista *Buscar*. Se ignora si hay `#tutor.repoCatalogUrl#`.",
+            "order": 5
+          },
           "tutor.repoCatalogUrl": {
             "type": "string",
             "default": "",
             "scope": "window",
-            "markdownDescription": "URL (http/https) del `catalogo.json` del repositorio de cursos. Formato en el README.",
-            "order": 5
+            "markdownDescription": "URL (http/https) de un `catalogo.json`. Si la defines, se usa en lugar de `#tutor.repoGithub#`. Formato en el README.",
+            "order": 6
           },
           "tutor.contentPath": {
             "type": "string",
             "default": "",
             "description": "Carpeta extra con cursos locales (carpetas que contengan curso.json). Vacío = solo los cursos descargados.",
-            "order": 6
+            "order": 7
           }
         }
       },

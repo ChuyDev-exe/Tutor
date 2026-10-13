@@ -38,7 +38,7 @@ Funciona en **VS Code**, **Cursor**, **Antigravity**, **VSCodium** y cualquier e
 ## Primeros pasos
 
 1. Abre una carpeta de trabajo.
-2. Instala un curso: **Tutor: Importar curso desde carpeta…**, o configura `tutor.repoCatalogUrl` y descárgalo desde la vista *Buscar cursos y clases*.
+2. Instala un curso: abre la vista **Buscar → Repositorio**, que lista los cursos de [ChuyDev-exe/Tutor-Cursos](https://github.com/ChuyDev-exe/Tutor-Cursos); haz clic en uno para ver su temario y duración, y pulsa **Descargar**. También puedes usar **Tutor: Importar curso desde carpeta…**.
 3. Sigue el **Siguiente paso** del panel Tutor.
 
 La guía interactiva está en *Ayuda → Introducción → Empieza con Tutor IDE*.
@@ -101,7 +101,7 @@ Se editan en **Tutor: Preferencias…** o en *Ajustes → Tutor IDE* (4 seccione
 
 | Sección | Ajustes |
 |---|---|
-| Aprendizaje | `tutor.autoCompleteOnPass`, `tutor.guardarDudas`, `tutor.correrEnTerminal`, `tutor.entorno` (auto · local · docker), `tutor.repoCatalogUrl` (http/https), `tutor.contentPath` |
+| Aprendizaje | `tutor.autoCompleteOnPass`, `tutor.guardarDudas`, `tutor.correrEnTerminal`, `tutor.entorno` (auto · local · docker), `tutor.repoGithub` (owner/repo), `tutor.repoCatalogUrl` (http/https), `tutor.contentPath` |
 | IA del tutor | `tutor.provider`, `tutor.model`, `tutor.apiBaseUrl`, `tutor.language` (solo a nivel de usuario, salvo el idioma) |
 | Enfoque | `tutor.focus.modoEnfoque`, `.limpiarEditor`, `.unaPreguntaALaVez`, `.temporizadorAutomatico`, `.minutosTrabajo`, `.minutosDescanso`, `.metaDiaria`, `.avisoInactividad`, `.mensajes` |
 | Lectura y accesibilidad | `tutor.accesibilidad.tamanoTexto`, `.espaciado`, `.fuenteLegible`, `.anchoLectura`, `.altoContraste`, `.reducirMovimiento`, `.sinEmojis`, `.ocultarRacha` |

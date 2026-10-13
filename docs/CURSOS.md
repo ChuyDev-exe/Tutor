@@ -1,6 +1,6 @@
 # Formato de un curso
 
-Un curso es una carpeta con un `curso.json`. Se puede importar desde una carpeta o publicar en un repositorio (`catalogo.json`).
+Un curso es una carpeta con un `curso.json`. Se puede importar desde una carpeta o publicar en un repositorio: un repositorio de GitHub (cada carpeta con `curso.json` es un curso) o un `catalogo.json`.
 
 > **¿Generas el curso con una IA?** Usa [CREAR-CURSO-CON-IA.md](CREAR-CURSO-CON-IA.md) (reglas, prompt y buenas prácticas) y parte de la [plantilla](plantilla-curso/). Este documento es la **referencia de campos**.
 
@@ -21,6 +21,8 @@ mi-curso/
 ├── MANUAL.md            # manual de configuración (opcional)
 ├── setup.sh             # prepara el entorno (opcional)
 ├── capitulos/01-intro.md
+├── img/                 # imágenes de manuales, enunciados y evaluaciones (opcional)
+│   └── memoria.png
 └── ejercicios/
     ├── suma-enunciado.md
     ├── suma-solucion.md
@@ -99,8 +101,31 @@ El nombre del archivo sale del `titulo` del ejercicio (sin acentos ni numeració
 { "tipo": "multiple", "pregunta": "…", "opciones": ["a","b","c"], "respuestas": [0,2] }
 { "tipo": "vf",       "pregunta": "…", "respuesta": true }
 { "tipo": "texto",    "pregunta": "…", "aceptadas": ["print", "print()"] }
+{ "tipo": "arrastrar", "pregunta": "Lleva cada valor a su tipo",
+  "zonas": ["int", "str", { "texto": "float", "imagen": "img/float.png" }],
+  "elementos": [ { "texto": "42", "zona": "int" },
+                 { "texto": "\"hola\"", "zona": "str" },
+                 { "texto": "3.14", "imagen": "img/pi.png", "zona": 2 } ] }
 ```
-Opcionales: `codigo` (fragmento mostrado bajo la pregunta), `explicacion`, `id`. Las opciones se **mezclan** en cada intento (evita «todas las anteriores»). El alumno puede repetir solo las falladas (no cuenta para su puntaje).
+Opcionales: `codigo` (fragmento mostrado bajo la pregunta), `imagen`, `explicacion`, `id`. Las opciones se **mezclan** en cada intento (evita «todas las anteriores»). El alumno puede repetir solo las falladas (no cuenta para su puntaje).
+
+**`arrastrar` (evaluación gráfica):** el alumno arrastra cada elemento a la zona a la que pertenece. También funciona sin ratón: se selecciona el elemento (clic, Enter o espacio) y luego la zona. La pregunta cuenta como **acertada solo si todos los elementos están en su zona**; al calificar, cada elemento mal colocado indica cuál era la suya.
+- `zonas`: al menos 2. Cada una es un texto o `{ "texto", "imagen" }`.
+- `elementos`: cada uno con `texto`, `imagen` o ambos, y su `zona` correcta: el **texto de la zona** (sin distinguir mayúsculas ni acentos) o su **índice** desde 0. Varios elementos pueden ir a la misma zona.
+- Los elementos se mezclan en cada intento si `barajar` está activo; las zonas mantienen su orden.
+
+### Imágenes
+
+**En la documentación** (manual del capítulo, `MANUAL.md`, enunciados, pistas y soluciones): Markdown normal, con rutas relativas al propio archivo.
+```markdown
+![Pila y montículo](../img/memoria.png)
+<img src="../img/memoria.png" width="320" alt="Pila y montículo">
+```
+Al copiar un Markdown a la carpeta del alumno, la extensión copia también sus imágenes a `<curso>/imagenes/` y corrige los enlaces. Las imágenes deben estar **dentro de la carpeta del curso** (las rutas `../` que salen de ella se ignoran); las URLs `https://` se dejan tal cual.
+
+**En las evaluaciones:** `imagen` en la pregunta (se muestra bajo el enunciado) y en las zonas y elementos de `arrastrar`. Es una ruta **relativa a la carpeta del curso** (`img/diagrama.png`) o una URL `https://`. Formatos: png, jpg, gif, svg, webp.
+
+`validate-course` avisa de las imágenes que no existen o que salen del curso.
 
 ## setup.sh
 
@@ -112,9 +137,23 @@ El alumno lo ejecuta con *Tutor: Ejecutar setup del curso*. Antes de correrlo, l
 
 ## Actualizar un curso
 
-Sube `version` en `curso.json` y en `catalogo.json`. A quien ya lo tiene instalado se le ofrece **Actualizar**; se reemplazan manuales, enunciados, soluciones y pruebas, y se **conservan su progreso y sus archivos**. No cambies los `id` de capítulos ni de ejercicios entre versiones: el progreso se guarda por esos ids.
+Sube `version` en `curso.json` (y en `catalogo.json` si usas uno). A quien ya lo tiene instalado se le ofrece **Actualizar**; se reemplazan manuales, enunciados, soluciones y pruebas, y se **conservan su progreso y sus archivos**. No cambies los `id` de capítulos ni de ejercicios entre versiones: el progreso se guarda por esos ids.
+
+## Repositorio de GitHub
+
+Es la forma más simple de publicar: sube cada curso a una carpeta de un repositorio público.
+
+```
+mi-repo/
+├── c-basico/curso.json …
+└── react-basico/curso.json …
+```
+
+La vista **Buscar → Repositorio** lista los cursos de `tutor.repoGithub` (por defecto [`ChuyDev-exe/Tutor-Cursos`](https://github.com/ChuyDev-exe/Tutor-Cursos)): cada carpeta con un `curso.json`. Al elegir uno se abre su **ficha** con el temario (capítulos, minutos, ejercicios y preguntas de cada uno), la duración total (suma de `minutos`), requisitos y el botón **Descargar** o **Actualizar**. Se descargan todos los archivos de la carpeta (salvo los ocultos, como `.DS_Store`). Formatos aceptados: `owner/repo`, `owner/repo@rama` o la URL del repositorio.
 
 ## catalogo.json
+
+Alternativa a GitHub para servir cursos desde cualquier web. Si `tutor.repoCatalogUrl` tiene valor, se usa en lugar de `tutor.repoGithub`.
 
 ```json
 { "nombre": "Mi repositorio",

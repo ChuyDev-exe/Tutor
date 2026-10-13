@@ -18,9 +18,10 @@ Resumen técnico de Tutor IDE para quien quiera mantenerla o ampliarla. El compo
 | Estado | `state.ts` | `TutorState`: lee/escribe el archivo `.tutor`, ubica el `store`, migra la carpeta antigua, estadísticas y racha |
 | Cursos | `content.ts` | Carga cursos del `store` y de `tutor.contentPath`; búsqueda de texto en capítulos y enunciados |
 | | `types.ts` | Interfaces: `Course`, `Chapter`, `Exercise`, `QuizQuestion`, `Requirement`… |
-| | `repo.ts` · `searchProvider.ts` | Catálogo remoto, descarga con protección de rutas, comparación de versiones; vista lateral de búsqueda |
+| | `repo.ts` · `searchProvider.ts` | Cursos remotos (repositorio de GitHub vía API de árboles + `raw.githubusercontent.com`, o `catalogo.json`), descarga con protección de rutas, comparación de versiones; vista lateral de búsqueda con la ficha (temario, duración) de cada curso |
 | | `validator.ts` | Validación de la estructura de un curso (sin VS Code) |
 | Carpeta del alumno | `studentFolder.ts` | Crea manual, archivo del alumno, enunciado y pistas solo de capítulos desbloqueados; nombres seguros |
+| | `mdAssets.ts` | Copia las imágenes que usa un Markdown del curso junto a su copia (`<curso>/imagenes/`) y reescribe los enlaces (sin VS Code) |
 | Ejecución | `runtimes.ts` | Tabla de lenguajes (comando, compilación previa, extensión, tiempo límite, imagen de Docker y cómo instalarlo); sin `sh -c`, igual en los tres sistemas. `buildCommand` envuelve un comando en `docker run` |
 | | `runner.ts` | Ejecuta código y casos de prueba (stdin → stdout), con límite de salida y de tiempo; `pruebasComando` con permiso. C/C++ se compilan una vez antes de correr o de todos los casos |
 | | `environment.ts` | Decide dónde correr: herramienta local si existe; si no, instalarla o usar Docker (`tutor.entorno`) |
@@ -35,7 +36,7 @@ Resumen técnico de Tutor IDE para quien quiera mantenerla o ampliarla. El compo
 | Enfoque y accesibilidad | `a11y.ts` | CSS de accesibilidad para los webviews (en vivo), `notify` silencioso, perfiles |
 | | `focus.ts` · `focusLayout.ts` · `focusView.ts` · `thoughts.ts` | Temporizador y estadísticas, entorno despejado reversible, panel de la sesión, pensamientos pendientes |
 | | `preferences.ts` | Panel de preferencias dirigido por un esquema |
-| Utilidades puras | `pure.ts` | `slug`, comparación de versiones, calificación de preguntas, parseo de evaluaciones, requisitos seguros, análisis de scripts |
+| Utilidades puras | `pure.ts` | `slug`, comparación de versiones, calificación de preguntas (incluida `arrastrar`), parseo de evaluaciones, requisitos seguros, análisis de scripts, resumen de un curso (temario, duración), repositorios de GitHub, imágenes en Markdown |
 | | `md.ts` | Renderizado mínimo de Markdown para webviews y nonce de CSP |
 
 ## El archivo `.tutor`
@@ -64,13 +65,17 @@ El `store` contiene `cursos/<id>/` (curso instalado: soluciones, pruebas, `setup
 
 ## Flujos clave
 
-**Instalar un curso** — importar (copia a `store/cursos/<id>`) o descargar (`repo.ts`) → `registerCourse` → recarga → `studentFolder.syncStudentFolder` (solo capítulos desbloqueados) → valida requisitos.
+**Buscar y descargar** — al abrir la vista, `listRepoCourses` lee el árbol del repositorio de GitHub (una petición a la API), localiza cada `curso.json`, lo lee de `raw.githubusercontent.com` y calcula su resumen (`summarizeCourse`); la lista se guarda 5 minutos. El webview solo recibe datos para mostrar y devuelve **ids**: las URLs y rutas de descarga nunca salen del host.
+
+**Instalar un curso** — importar (copia a `store/cursos/<id>`) o descargar (`repo.ts`; tras los archivos listados, se intentan las imágenes que citan sus Markdown) → `registerCourse` → recarga → `studentFolder.syncStudentFolder` (solo capítulos desbloqueados) → valida requisitos.
 
 **Entrar a un ejercicio** (`tutor.openExercise`) — comprobar desbloqueo → `ensureExerciseFile` (plantilla, sin pisar) → abrir el archivo → `ensureStatement` + vista previa Markdown al lado → devolver el foco al código. `statusBar` y el chat siguen al ejercicio activo (`followEditor`).
 
 **Correr / probar** — guarda el documento → `runner` ejecuta por caso → `recordExercise` → resultado a *Salida → Tutor* y contexto del chat (`lastOutput`). Si pasan todas las pruebas: `setExerciseDone` → `onDidChangeProgress` → `tryAutoComplete` del capítulo → si se completa, `syncStudentFolder` materializa el siguiente.
 
-**Evaluación** — `quizView` baraja y envía preguntas **sin** las respuestas; el webview devuelve las elegidas y el host califica con `gradeQuestion`. Un intento completo se registra; la práctica de falladas no.
+**Evaluación** — `quizView` baraja y envía preguntas **sin** las respuestas; el webview devuelve las elegidas y el host califica con `gradeQuestion`. En `arrastrar` se envían elementos (mezclados, con su índice original) y zonas, y vuelve la zona elegida por elemento. Las imágenes se sirven con `asWebviewUri` y `localResourceRoots` limitado a la carpeta del curso. Un intento completo se registra; la práctica de falladas no.
+
+**Imágenes de la documentación** — los Markdown se copian con `mdAssets.copyMarkdown`: las imágenes relativas que existen dentro del curso se copian a `<curso>/imagenes/` (la vista previa de Markdown solo carga archivos del workspace) y se reescriben los enlaces. La solución se copia, con sus imágenes, a `store/vistas/<curso>/`, nunca a la carpeta del alumno.
 
 **Chat y dudas** — `chatProvider` arma el prompt (curso, capítulo, enunciado, tu código, última salida, dudas anteriores) → `aiClient.chat` → muestra la respuesta → `doubts.saveDoubt` la añade a `dudas-y-preguntas.md`.
 
@@ -85,6 +90,8 @@ El `store` contiene `cursos/<id>/` (curso instalado: soluciones, pruebas, `setup
 | Un curso declara un requisito que ejecuta algo arbitrario | Solo se ejecuta `<ejecutable> <bandera>`, validados por patrón (`isSafeCommand`, `isSafeVersionArg`) |
 | Un curso trae un `setup.sh` o un `pruebasComando` dañino | Confirmación modal; el `setup.sh` se analiza (`analyzeScript`) y se muestran sus comandos y riesgos; lo aprobado se recuerda por hash |
 | Un catálogo o curso intenta escribir fuera de su carpeta (`../`) | Se resuelve y comprueba cada ruta; ids de curso → `safeName` |
+| Un curso referencia imágenes fuera de su carpeta | `imagen` y las imágenes de los Markdown solo se usan si quedan dentro del curso (o son `https://`); el panel de evaluación solo puede leer la carpeta del curso |
+| El webview de búsqueda pide descargar una URL arbitraria | Solo envía ids; la URL sale de la lista leída por el host. «Ver en GitHub» solo abre `https://github.com/…` |
 | Un repositorio clonado redirige la IA y roba la clave | `provider`, `model` y `apiBaseUrl` tienen `scope: application`; la clave va en `SecretStorage` |
 | Inyección HTML en webviews | CSP con nonce criptográfico; todo texto dinámico se escapa; las respuestas de la IA pasan por un renderizador que escapa primero |
 | Respuestas correctas expuestas al alumno | La evaluación se califica en el host; las soluciones no están en su carpeta |

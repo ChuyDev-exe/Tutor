@@ -8,7 +8,7 @@ examples/
 │       ├── python-basico/      # catálogo con «archivos»; evaluaciones de los 4 tipos; plantillas
 │       ├── c-basico/           # gcc, setup.sh, plantillas, pistas graduales, evaluación obligatoria
 │       └── demo-requisitos/    # requisitos que fallan a propósito
-└── workspace/            # carpeta de trabajo vacía con tutor.repoCatalogUrl ya configurado
+└── workspace/            # carpeta de trabajo vacía (usa el repositorio de GitHub de cursos)
 ```
 
 ## Arrancar
@@ -17,6 +17,8 @@ examples/
 npm run example          # empaqueta, sirve el repo en :8787 y abre el editor sobre examples/workspace
 npm run serve:examples   # solo el servidor (PORT=9000 para cambiar el puerto)
 ```
+
+Por defecto la vista *Buscar* lista los cursos de GitHub (`tutor.repoGithub`). Para probar con el repositorio local, crea `examples/repo/` y añade `"tutor.repoCatalogUrl": "http://localhost:8787/catalogo.json"` a `examples/workspace/.vscode/settings.json`.
 
 Deja la terminal abierta mientras pruebas las descargas. Si el puerto 8787 está ocupado: `lsof -ti:8787 | xargs kill`.
 Para empezar de cero, borra todo en `examples/workspace` salvo `.vscode` (incluido el archivo `.tutor`).

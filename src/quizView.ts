@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import { a11yHead, registerWebview } from './a11y';
 import { getNonce } from './md';
-import { Chapter, Course, QuizQuestion } from './types';
+import { Chapter, Course, QuizItem, QuizQuestion } from './types';
 import { gradeQuestion as grade } from './pure';
 import { ChaptersProvider, quizPassed } from './chaptersProvider';
 import { oneQuestionAtATime } from './a11y';
@@ -16,6 +16,14 @@ function shuffle<T>(arr: T[]): T[] {
   }
   return a;
 }
+
+/** Imagen para el webview: URL https tal cual; archivo del curso → URI del webview. */
+function imgUri(webview: vscode.Webview, p?: string): string | undefined {
+  if (!p) return undefined;
+  return /^https:\/\//i.test(p) ? p : webview.asWebviewUri(vscode.Uri.file(p)).toString();
+}
+
+const itemView = (webview: vscode.Webview, it: QuizItem) => ({ t: it.texto, img: imgUri(webview, it.imagen) });
 
 interface PanelState {
   panel: vscode.WebviewPanel;
@@ -45,12 +53,13 @@ export class QuizViewManager {
       'tutorQuiz',
       `Evaluación: ${chapter.titulo}`,
       vscode.ViewColumn.Active,
-      { enableScripts: true, retainContextWhenHidden: true }
+      // las imágenes de las preguntas solo pueden venir de la carpeta del curso (o de https)
+      { enableScripts: true, retainContextWhenHidden: true, localResourceRoots: [vscode.Uri.file(course.root)] }
     );
     registerWebview(panel);
     const st: PanelState = { panel, shown: [], practice: false };
     this.panels.set(key, st);
-    panel.webview.html = this.html();
+    panel.webview.html = this.html(panel.webview);
 
     panel.webview.onDidReceiveMessage((msg) => {
       if (msg.type === 'ready') this.start(st, course, chapter);
@@ -79,12 +88,19 @@ export class QuizViewManager {
       best: rec?.mejor,
       intentos: (rec?.intentos ?? []).slice(-5).reverse(),
       // sin respuestas correctas; opciones mezcladas conservando su índice original (v)
+      // arrastrar: elementos mezclados conservando su índice original (v); las zonas, en orden
       questions: qs.map((q) => ({
         id: q.id,
         tipo: q.tipo,
         pregunta: q.pregunta,
         codigo: q.codigo,
+        img: imgUri(st.panel.webview, q.imagen),
         opciones: (chapter.barajar && q.tipo !== 'vf' ? shuffle(q.opciones.map((t, v) => ({ v, t }))) : q.opciones.map((t, v) => ({ v, t }))),
+        zonas: (q.zonas ?? []).map((z) => itemView(st.panel.webview, z)),
+        elementos: (() => {
+          const els = (q.elementos ?? []).map((e, v) => ({ v, ...itemView(st.panel.webview, e) }));
+          return chapter.barajar ? shuffle(els) : els;
+        })(),
       })),
     });
   }
@@ -97,7 +113,10 @@ export class QuizViewManager {
         tipo: q.tipo,
         pregunta: q.pregunta,
         codigo: q.codigo,
+        img: imgUri(st.panel.webview, q.imagen),
         opciones: q.opciones,
+        zonas: (q.zonas ?? []).map((z) => itemView(st.panel.webview, z)),
+        elementos: (q.elementos ?? []).map((e) => itemView(st.panel.webview, e)),
         dada: dada ?? (q.tipo === 'texto' ? '' : []),
         correctas: q.correctas,
         aceptadas: q.aceptadas,
@@ -129,13 +148,13 @@ export class QuizViewManager {
     });
   }
 
-  private html(): string {
+  private html(webview: vscode.Webview): string {
     const nonce = getNonce();
     return `<!DOCTYPE html>
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'nonce-${nonce}';">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src ${webview.cspSource} https: data:; style-src 'unsafe-inline'; script-src 'nonce-${nonce}';">
 <style>
   body { font-family: var(--vscode-font-family); color: var(--vscode-foreground); padding: 16px 20px 40px; line-height: 1.5; max-width: 820px; }
   h1 { font-size: 1.15em; margin: 0 0 4px; }
@@ -165,6 +184,24 @@ export class QuizViewManager {
   .row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
   .q.hidden { display: none; }
   .hist { font-size: .85em; opacity: .8; margin-top: 14px; }
+  .qimg { display: block; max-width: 100%; max-height: 300px; border-radius: 6px; margin: 6px 0; }
+  .dnd .zones { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px; margin-top: 8px; }
+  .pool, .zone { border: 2px dashed var(--vscode-panel-border, rgba(127,127,127,.5)); border-radius: 8px; padding: 8px; min-height: 64px; }
+  .zone { cursor: pointer; }
+  .zone.over, .pool.over { border-color: var(--vscode-focusBorder, #0e7afe); background: var(--vscode-list-hoverBackground); }
+  .zone:focus-visible, .item:focus-visible { outline: 2px solid var(--vscode-focusBorder, #0e7afe); outline-offset: 1px; }
+  .zlabel { font-weight: 600; font-size: .9em; margin-bottom: 6px; display: flex; align-items: center; gap: 6px; }
+  .zlabel img { max-height: 40px; max-width: 80px; border-radius: 4px; }
+  .items { display: flex; flex-wrap: wrap; gap: 6px; min-height: 28px; }
+  .item { display: inline-flex; flex-direction: column; align-items: center; gap: 3px; padding: 4px 9px; border-radius: 6px; cursor: grab; user-select: none;
+          border: 1px solid var(--vscode-panel-border, rgba(127,127,127,.5)); background: var(--vscode-editorWidget-background, rgba(127,127,127,.1)); }
+  .item img { max-width: 96px; max-height: 72px; border-radius: 4px; pointer-events: none; }
+  .item.sel { outline: 2px solid var(--vscode-focusBorder, #0e7afe); }
+  .item.dragging { opacity: .4; }
+  .item.correct { border-color: var(--vscode-testing-iconPassed, #4caf50); background: rgba(76,175,80,.14); cursor: default; }
+  .item.wrong { border-color: var(--vscode-testing-iconFailed, #f44336); background: rgba(244,67,54,.12); cursor: default; }
+  .item em { font-size: .8em; opacity: .85; }
+  .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
 </style>
 ${a11yHead(nonce)}
 </head>
@@ -173,6 +210,7 @@ ${a11yHead(nonce)}
   <div class="meta" id="meta"></div>
   <div class="chips" id="chips"></div>
   <div id="body"></div>
+  <div id="live" class="sr" aria-live="polite"></div>
 <script nonce="${nonce}">
   const vscode = acquireVsCodeApi();
   const $ = (id) => document.getElementById(id);
@@ -181,19 +219,71 @@ ${a11yHead(nonce)}
   let last = null;
   let posLabel = '';
 
-  const typeHint = { unica: 'Elige una opción', multiple: 'Marca todas las correctas', vf: 'Verdadero o falso', texto: 'Escribe tu respuesta' };
+  const typeHint = { unica: 'Elige una opción', multiple: 'Marca todas las correctas', vf: 'Verdadero o falso', texto: 'Escribe tu respuesta',
+    arrastrar: 'Arrastra cada elemento a su zona (o selecciónalo con clic / Enter y luego elige la zona)' };
+
+  const itemHtml = (it) => (it.img ? '<img src="' + esc(it.img) + '" alt="' + esc(it.t || 'imagen') + '">' : '') + (it.t ? '<span>' + esc(it.t) + '</span>' : '');
+  const qImg = (q) => q.img ? '<img class="qimg" src="' + esc(q.img) + '" alt="Imagen de la pregunta">' : '';
 
   function readAnswers() {
     const out = {};
     questions.forEach((q, i) => {
       if (q.tipo === 'texto') out[q.id] = (document.querySelector('#t' + i) || {}).value || '';
+      else if (q.tipo === 'arrastrar') {
+        const arr = q.elementos.map(() => -1);
+        document.querySelectorAll('.item[data-q="' + i + '"]').forEach(el => {
+          arr[Number(el.dataset.v)] = Number(el.closest('[data-zone]').dataset.zone);
+        });
+        out[q.id] = arr;
+      }
       else out[q.id] = [...document.querySelectorAll('input[name="q' + i + '"]:checked')].map(x => Number(x.value));
     });
     return out;
   }
   function answered() {
     const a = readAnswers();
-    return questions.filter(q => q.tipo === 'texto' ? String(a[q.id]).trim() : a[q.id].length).length;
+    return questions.filter(q => q.tipo === 'texto' ? String(a[q.id]).trim()
+      : q.tipo === 'arrastrar' ? a[q.id].every(z => z >= 0) : a[q.id].length).length;
+  }
+
+  // ---- arrastrar: drag & drop nativo + selección con clic o teclado ----
+  let selected = null, dragging = null;
+  function selectItem(el) {
+    if (selected) { selected.classList.remove('sel'); selected.setAttribute('aria-pressed', 'false'); }
+    selected = selected === el ? null : el;
+    if (selected) { selected.classList.add('sel'); selected.setAttribute('aria-pressed', 'true'); }
+  }
+  function moveTo(el, target) {
+    if (!el || !target || el.dataset.q !== target.dataset.q) return;
+    target.querySelector('.items').appendChild(el);
+    if (selected) selectItem(selected);
+    const name = target.dataset.zone === '-1' ? 'elementos sin colocar' : target.getAttribute('aria-label');
+    $('live').textContent = '«' + (el.textContent || 'imagen') + '» → ' + name;
+    updateBar();
+  }
+  function wireDnd(root) {
+    root.querySelectorAll('.item').forEach(el => {
+      el.addEventListener('dragstart', (e) => { dragging = el; el.classList.add('dragging'); e.dataTransfer.setData('text/plain', el.dataset.v); e.dataTransfer.effectAllowed = 'move'; });
+      el.addEventListener('dragend', () => { el.classList.remove('dragging'); dragging = null; });
+      el.addEventListener('click', (e) => { e.stopPropagation(); selectItem(el); });
+      el.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); selectItem(el); } });
+    });
+    root.querySelectorAll('[data-zone]').forEach(z => {
+      z.addEventListener('dragover', (e) => { if (dragging && dragging.dataset.q === z.dataset.q) { e.preventDefault(); z.classList.add('over'); } });
+      z.addEventListener('dragleave', () => z.classList.remove('over'));
+      z.addEventListener('drop', (e) => { e.preventDefault(); z.classList.remove('over'); moveTo(dragging, z); });
+      z.addEventListener('click', () => moveTo(selected, z));
+      z.addEventListener('keydown', (e) => { if ((e.key === 'Enter' || e.key === ' ') && e.target === z) { e.preventDefault(); moveTo(selected, z); } });
+    });
+  }
+  function dndHtml(q, i) {
+    const items = q.elementos.map(e =>
+      '<div class="item" draggable="true" tabindex="0" role="button" aria-pressed="false" data-q="' + i + '" data-v="' + e.v + '">' + itemHtml(e) + '</div>').join('');
+    const zones = q.zonas.map((z, k) =>
+      '<div class="zone" tabindex="0" role="button" data-q="' + i + '" data-zone="' + k + '" aria-label="' + esc(z.t || 'zona ' + (k + 1)) + '">' +
+        '<div class="zlabel">' + itemHtml(z) + '</div><div class="items"></div></div>').join('');
+    return '<div class="dnd"><div class="pool" data-q="' + i + '" data-zone="-1" aria-label="elementos sin colocar"><div class="zlabel">Elementos</div><div class="items">' + items + '</div></div>' +
+      '<div class="zones">' + zones + '</div></div>';
   }
   function updateBar() {
     const n = answered();
@@ -216,10 +306,11 @@ ${a11yHead(nonce)}
     html += questions.map((q, i) => {
       let body;
       if (q.tipo === 'texto') body = '<input type="text" id="t' + i + '" placeholder="Tu respuesta…" autocomplete="off">';
+      else if (q.tipo === 'arrastrar') body = dndHtml(q, i);
       else body = q.opciones.map(o =>
         '<label class="opt"><input type="' + (q.tipo === 'multiple' ? 'checkbox' : 'radio') + '" name="q' + i + '" value="' + o.v + '"> <span>' + esc(o.t) + '</span></label>').join('');
       return '<div class="q"><div class="prompt">' + (i + 1) + '. ' + esc(q.pregunta) + '</div>' +
-        '<div class="hint">' + typeHint[q.tipo] + '</div>' +
+        '<div class="hint">' + typeHint[q.tipo] + '</div>' + qImg(q) +
         (q.codigo ? '<pre><code>' + esc(q.codigo) + '</code></pre>' : '') + body + '</div>';
     }).join('');
     html += '<div class="row">' +
@@ -235,6 +326,8 @@ ${a11yHead(nonce)}
       vscode.postMessage({ type: 'grade', answers: readAnswers() });
     });
     $('body').oninput = $('body').onchange = updateBar;
+    selected = null;
+    wireDnd($('body'));
     updateBar();
     if (msg.oneAtATime) {
       let cur = 0;
@@ -259,6 +352,21 @@ ${a11yHead(nonce)}
     return d.dada.length ? d.dada.map(i => esc(d.opciones[i])).join(', ') : '<em>(sin responder)</em>';
   }
 
+  // cada zona con lo que el alumno dejó en ella; lo mal colocado indica su zona correcta
+  function dndResult(d) {
+    const given = Array.isArray(d.dada) ? d.dada : [];
+    const chip = (e, j) => {
+      const ok = given[j] === d.correctas[j];
+      return '<div class="item ' + (ok ? 'correct' : 'wrong') + '">' + itemHtml(e) +
+        (ok ? '' : '<em>va en «' + esc(d.zonas[d.correctas[j]].t || 'zona ' + (d.correctas[j] + 1)) + '»</em>') + '</div>';
+    };
+    const inZone = (k) => d.elementos.map((e, j) => given[j] === k ? chip(e, j) : '').join('');
+    const loose = inZone(-1) + d.elementos.map((e, j) => given[j] === undefined ? chip(e, j) : '').join('');
+    return '<div class="dnd">' + (loose ? '<div class="pool"><div class="zlabel">Sin colocar</div><div class="items">' + loose + '</div></div>' : '') +
+      '<div class="zones">' + d.zonas.map((z, k) =>
+        '<div class="zone"><div class="zlabel">' + itemHtml(z) + '</div><div class="items">' + inZone(k) + '</div></div>').join('') + '</div></div>';
+  }
+
   function renderResult(msg) {
     const head = '<div class="banner ' + (msg.passed ? 'ok' : 'fail') + '">' + (msg.passed ? '✓ ' : '✗ ') +
       msg.score + '/' + msg.total + ' (' + Math.round(msg.score / msg.total * 100) + '%) — ' +
@@ -266,7 +374,9 @@ ${a11yHead(nonce)}
       (msg.practice ? ' · práctica (no cuenta)' : (msg.best ? ' · mejor: ' + msg.best.score + '/' + msg.best.total + ' · ' + msg.intentos + ' intento(s)' : '')) + '</div>';
     const items = msg.details.map((d, i) => {
       let body;
-      if (d.tipo === 'texto') {
+      if (d.tipo === 'arrastrar') {
+        body = dndResult(d);
+      } else if (d.tipo === 'texto') {
         body = '<div class="opt ' + (d.ok ? 'correct' : 'wrong') + '"><span>Tu respuesta: ' + fmtGiven(d) + '</span></div>' +
           (d.ok ? '' : '<div class="opt correct"><span>Aceptadas: ' + d.aceptadas.map(esc).join(' · ') + '</span></div>');
       } else {
@@ -277,7 +387,7 @@ ${a11yHead(nonce)}
           return '<div class="opt ' + cls + '"><span>' + esc(o) + '</span> <em>' + mark + '</em></div>';
         }).join('');
       }
-      return '<div class="q"><div class="prompt">' + (d.ok ? '✅ ' : '❌ ') + (i + 1) + '. ' + esc(d.pregunta) + '</div>' +
+      return '<div class="q"><div class="prompt">' + (d.ok ? '✅ ' : '❌ ') + (i + 1) + '. ' + esc(d.pregunta) + '</div>' + qImg(d) +
         (d.codigo ? '<pre><code>' + esc(d.codigo) + '</code></pre>' : '') + body +
         (d.explicacion ? '<div class="expl">' + esc(d.explicacion) + '</div>' : '') + '</div>';
     }).join('');

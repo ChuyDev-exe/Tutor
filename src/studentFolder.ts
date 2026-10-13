@@ -4,6 +4,7 @@ import * as fs from 'fs';
 import { Chapter, Course, Exercise } from './types';
 import { runtimeFor } from './runtimes';
 import { slug } from './pure';
+import { copyMarkdown, withCourseImages } from './mdAssets';
 
 /**
  * Dos carpetas por curso en el workspace:
@@ -24,6 +25,11 @@ export const safeName = (id: string): string => id.replace(/[^\w-]+/g, '-').repl
 
 export function studentRoot(course: Course): string {
   return path.join(workspaceRoot(), safeName(course.id));
+}
+
+/** Imágenes de la documentación del curso, copiadas para que los Markdown del alumno las muestren. */
+export function assetsDir(course: Course): string {
+  return path.join(studentRoot(course), 'imagenes');
 }
 
 export function chapterDir(course: Course, chapter: Chapter): string {
@@ -50,7 +56,7 @@ export function statementFile(course: Course, chapter: Chapter, ex: Exercise): s
 
 export function ensureStatement(course: Course, chapter: Chapter, ex: Exercise): string {
   const file = statementFile(course, chapter, ex);
-  if (fs.existsSync(ex.enunciadoFile)) write(file, fs.readFileSync(ex.enunciadoFile, 'utf8'), true);
+  if (fs.existsSync(ex.enunciadoFile)) copyMarkdown(ex.enunciadoFile, file, course.root, assetsDir(course));
   return file;
 }
 
@@ -76,7 +82,7 @@ export function ensureExerciseFile(course: Course, chapter: Chapter, ex: Exercis
 /** Copia/actualiza el manual del capítulo en la carpeta del alumno. */
 export function ensureChapterManual(course: Course, chapter: Chapter): string {
   const file = manualFileFor(course, chapter);
-  if (fs.existsSync(chapter.archivo)) write(file, fs.readFileSync(chapter.archivo, 'utf8'), true);
+  if (fs.existsSync(chapter.archivo)) copyMarkdown(chapter.archivo, file, course.root, assetsDir(course));
   return file;
 }
 
@@ -88,7 +94,7 @@ export function syncStudentFolder(course: Course, isUnlocked: (index: number) =>
   const root = studentRoot(course);
   fs.mkdirSync(root, { recursive: true });
   if (course.manualFile && fs.existsSync(course.manualFile)) {
-    write(path.join(root, 'MANUAL.md'), fs.readFileSync(course.manualFile, 'utf8'), true);
+    copyMarkdown(course.manualFile, path.join(root, 'MANUAL.md'), course.root, assetsDir(course));
   }
   course.capitulos.forEach((ch, i) => {
     if (!isUnlocked(i)) return;
@@ -116,11 +122,13 @@ export function hintsFile(course: Course, chapter: Chapter, ex: Exercise): strin
 }
 
 export function writeHints(course: Course, chapter: Chapter, ex: Exercise, count: number): string {
+  const file = hintsFile(course, chapter, ex);
   const parts = ex.pistaFiles.slice(0, count).map((p, i) => {
-    const body = fs.existsSync(p) ? fs.readFileSync(p, 'utf8').trim() : '_(pista no disponible)_';
+    const body = fs.existsSync(p)
+      ? withCourseImages(fs.readFileSync(p, 'utf8').trim(), path.dirname(p), path.dirname(file), course.root, assetsDir(course))
+      : '_(pista no disponible)_';
     return `## Pista ${i + 1} de ${ex.pistaFiles.length}\n\n${body}`;
   });
-  const file = hintsFile(course, chapter, ex);
   write(file, `# Pistas: ${ex.titulo}\n\nSe revelan de una en una; intenta avanzar entre pista y pista.\n\n${parts.join('\n\n')}\n`, true);
   return file;
 }

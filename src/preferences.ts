@@ -62,7 +62,8 @@ export const SECTIONS: Section[] = [
     title: 'Cursos',
     intro: 'De dónde salen los cursos.',
     controls: [
-      { key: 'repoCatalogUrl', type: 'text', label: 'Catálogo de cursos (URL)', help: 'Dirección http/https de un catalogo.json.', def: '', placeholder: 'https://…/catalogo.json' },
+      { key: 'repoGithub', type: 'text', label: 'Repositorio de cursos en GitHub', help: 'owner/repo: cada carpeta con un curso.json aparece en Buscar.', def: 'ChuyDev-exe/Tutor-Cursos', placeholder: 'owner/repo' },
+      { key: 'repoCatalogUrl', type: 'text', label: 'Catálogo de cursos (URL)', help: 'Dirección http/https de un catalogo.json; si la defines, reemplaza al repositorio de GitHub.', def: '', placeholder: 'https://…/catalogo.json' },
       { key: 'contentPath', type: 'text', label: 'Carpeta extra con cursos locales', def: '', placeholder: 'ruta/a/cursos' },
     ],
   },

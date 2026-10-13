@@ -82,6 +82,20 @@
           "opciones": ["7", "34", "Error", "3 4"],
           "respuesta": 1,
           "explicacion": "Con textos, + concatena."
+        },
+        {
+          "tipo": "arrastrar",
+          "pregunta": "Arrastra cada elemento a la etapa del programa a la que pertenece.",
+          "imagen": "img/flujo-programa.svg",
+          "zonas": ["Entrada", "Proceso", "Salida"],
+          "elementos": [
+            { "texto": "input()", "zona": "Entrada" },
+            { "texto": "Teclado", "imagen": "img/teclado.svg", "zona": "Entrada" },
+            { "texto": "int(texto) * 2", "zona": "Proceso" },
+            { "texto": "print()", "zona": "Salida" },
+            { "texto": "Pantalla", "imagen": "img/pantalla.svg", "zona": "Salida" }
+          ],
+          "explicacion": "Se lee del teclado con input(), se calcula y el resultado se muestra en pantalla con print()."
         }
       ]
     },

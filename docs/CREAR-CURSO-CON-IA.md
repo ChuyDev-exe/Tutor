@@ -140,6 +140,8 @@ En `evaluacion` del capítulo, de **4 a 8 preguntas**:
 { "tipo": "vf",       "pregunta": "…", "respuesta": true }
 { "tipo": "texto",    "pregunta": "…", "aceptadas": ["printf", "printf()"] }
 { "pregunta": "¿Qué imprime?", "codigo": "int x = 5;\nprintf(\"%d\", x + 1);", "opciones": ["5","6"], "respuesta": 1 }
+{ "tipo": "arrastrar", "pregunta": "Lleva cada dato a su tipo", "zonas": ["int", "char*", "float"],
+  "elementos": [ { "texto": "42", "zona": "int" }, { "texto": "\"hola\"", "zona": "char*" }, { "texto": "3.5f", "zona": "float" } ] }
 ```
 
 - Índices **desde 0**. `respuesta` es número (unica) o booleano (vf); `respuestas` es lista (multiple).
@@ -147,6 +149,8 @@ En `evaluacion` del capítulo, de **4 a 8 preguntas**:
 - **Las opciones se mezclan** en cada intento: nunca escribas «todas las anteriores», «ninguna» ni «la opción B».
 - Pon `explicacion` en cada pregunta: es lo que el alumno lee al fallar.
 - Mezcla tipos; incluye al menos una pregunta con `codigo`.
+- `arrastrar` sirve para **clasificar** (tipos, etapas, categorías): 2–4 zonas y 4–8 elementos; cada `zona` del elemento es el **texto exacto** de una zona. Solo se acierta si todos quedan bien, así que no pongas más de 8.
+- `imagen` (pregunta, zona o elemento): ruta relativa a la carpeta del curso (`img/x.png`) o URL `https://`. **No inventes imágenes**: usa solo archivos que existan en el curso. En los Markdown, `![texto](../img/x.png)` con ruta relativa al archivo.
 - Distractores plausibles (errores típicos), no absurdos. Evalúa lo enseñado en el manual, no trivia.
 - `evaluacionRequerida: true` solo en capítulos clave; `aprobacion` 60–80 normalmente.
 
@@ -229,11 +233,15 @@ Prueba adicional: en el editor, *Tutor: Importar curso desde carpeta…* y recor
 | Ids repetidos | Progreso mezclado entre capítulos/ejercicios |
 | Solución con varios bloques de código | Se prueba el primero, que puede ser un borrador |
 | Opciones «todas las anteriores» | Se rompe al mezclar las opciones |
+| `arrastrar` con una `zona` que no coincide con ninguna | La pregunta se descarta |
+| Imágenes que no existen o rutas `../` fuera del curso | No se muestran (`validate-course` las señala) |
 | Capítulos de 40+ minutos | Abandono; divide |
 
-## 13. Entrada del catálogo (si el curso va a un repositorio)
+## 13. Publicar en un repositorio
 
-En `catalogo.json` (esquema: [`schemas/catalogo.schema.json`](../schemas/catalogo.schema.json)):
+**GitHub (recomendado):** sube la carpeta del curso a un repositorio público; cada carpeta con `curso.json` aparece en la vista *Buscar* de quien tenga ese repositorio en `tutor.repoGithub`. La ficha del curso muestra `titulo`, `descripcion`, `nivel`, `version`, `requisitos` y el temario: rellena `descripcion` y `minutos` de cada capítulo, porque la duración del curso es su suma.
+
+**Catálogo propio:** en `catalogo.json` (esquema: [`schemas/catalogo.schema.json`](../schemas/catalogo.schema.json)):
 ```json
 { "id": "c-basico", "titulo": "C desde cero", "descripcion": "…", "nivel": "principiante",
   "tags": ["c", "gcc"], "version": "1.0.0", "ruta": "cursos/c-basico" }
