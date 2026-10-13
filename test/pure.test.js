@@ -154,3 +154,33 @@ test('imágenes en Markdown: detecta solo rutas locales y las reescribe', () => 
   assert.match(out, /\[enlace\]\(doc\.md\)/);
   assert.match(out, /!\[c\]\(<R\/img\/con espacio\.png> "t"\)/);
 });
+
+const { parseDoubts, flattenHeadings } = require('../out/pure');
+
+test('flattenHeadings aplana encabezados pero no toca el código', () => {
+  const md = '# Título\n```python\n# comentario\n```\n## Otro';
+  assert.equal(flattenHeadings(md), '**Título**\n```python\n# comentario\n```\n**Otro**');
+});
+
+test('parseDoubts lee día, hora, lugar, pregunta y respuesta', () => {
+  const md = [
+    '# Mis dudas', '', '## 2026-10-10', '',
+    '### 14:32 · Punteros › Ej 1', '', '**Pregunta:** ¿Puntero a constante?', '', '> detalle', '',
+    '**Respuesta del tutor:**', '', 'Usa `const int *p`.', '', '---', 'sigue', '', '---', '',
+    '### 15:00 · General', '', '**Pregunta:** Otra', '', '**Respuesta del tutor:**', '', '```c', '### 1:00 · no', '```', '', '---', '',
+  ].join('\n');
+  const d = parseDoubts(md);
+  assert.equal(d.length, 2);
+  assert.deepEqual(
+    { ...d[0] },
+    { dia: '2026-10-10', hora: '14:32', donde: 'Punteros › Ej 1', pregunta: '¿Puntero a constante?', respuesta: 'Usa `const int *p`.\n\n---\nsigue', linea: 4 }
+  );
+  assert.equal(d[1].respuesta, '```c\n### 1:00 · no\n```', 'los encabezados dentro de código no cortan la entrada');
+});
+
+test('el prompt del tutor pide respuestas concisas y protege todos los ejercicios del curso', () => {
+  const { buildTutorSystemPrompt } = require('../out/prompt');
+  const p = buildTutorSystemPrompt({ language: 'español', courseTitle: 'C', chapterTitles: ['Punteros'], exerciseTitles: ['Intercambiar valores'] });
+  assert.match(p, /CONCISO y DIRECTO/);
+  assert.match(p, /EJERCICIOS DEL CURSO \(no los resuelvas\):\n- Intercambiar valores/);
+});

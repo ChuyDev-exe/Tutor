@@ -38,6 +38,7 @@ import { parkThought, thoughtsPath } from './thoughts';
 import { buildDashboard } from './dashboard';
 import { formatIssues, validateCourseDir } from './validator';
 import { ensureDoubtsFile } from './doubts';
+import { DoubtCourseItem, DoubtItem, DoubtsProvider, revealDoubt } from './doubtsView';
 import { copyMarkdown } from './mdAssets';
 
 let tutorContext: TutorContext = {};
@@ -62,6 +63,7 @@ export function activate(context: vscode.ExtensionContext): void {
   const resultsView = new ResultsViewManager();
   const focusTimer = new FocusTimer(new FocusLayout(context));
   const preferences = new PreferencesPanel(context);
+  const doubts = new DoubtsProvider(() => chapters.allCourses, () => tutorContext.courseId);
   const out = vscode.window.createOutputChannel('Tutor');
   context.subscriptions.push(out);
 
@@ -103,13 +105,20 @@ export function activate(context: vscode.ExtensionContext): void {
 
   const setContext = (ctx: TutorContext): void => {
     const same = ctx.exerciseId && ctx.exerciseId === tutorContext.exerciseId;
+    const courseChanged = ctx.courseId !== tutorContext.courseId;
     tutorContext = { ...ctx, lastOutput: same ? tutorContext.lastOutput : undefined, studentFile: same ? tutorContext.studentFile : undefined };
     statusBar.update();
+    if (courseChanged) doubts.refresh();
   };
 
   // ── Utilidades ──────────────────────────────────────────────────────
   const courseId = (arg: unknown): string | undefined =>
     typeof arg === 'string' ? arg : (arg as { course?: Course } | undefined)?.course?.id;
+
+  /** Curso en el que se está trabajando (o el único instalado). */
+  const activeCourse = (): Course | undefined =>
+    chapters.allCourses.find((c) => c.id === tutorContext.courseId) ??
+    (chapters.allCourses.length === 1 ? chapters.allCourses[0] : undefined);
 
   const pickCourse = async (arg?: unknown): Promise<Course | undefined> => {
     const all = chapters.allCourses;
@@ -157,6 +166,11 @@ export function activate(context: vscode.ExtensionContext): void {
 
   // ── Vistas ──────────────────────────────────────────────────────────
   const chaptersTree = vscode.window.createTreeView('tutorChapters', { treeDataProvider: chapters });
+  context.subscriptions.push(
+    doubts,
+    vscode.window.createTreeView('tutorDoubts', { treeDataProvider: doubts }),
+    chapters.onDidChangeTreeData(() => doubts.refresh())
+  );
   const updateMeta = (): void => {
     const pct = chapters.overallPercent();
     const calm = focusMode();
@@ -433,9 +447,8 @@ export function activate(context: vscode.ExtensionContext): void {
     }),
 
     // Archivo de dudas del alumno (se rellena solo con las preguntas al tutor)
-    vscode.commands.registerCommand('tutor.openDoubts', async () => {
-      const cur = chapters.allCourses.find((c) => c.id === tutorContext.courseId);
-      const course = cur ?? (chapters.allCourses.length === 1 ? chapters.allCourses[0] : undefined);
+    vscode.commands.registerCommand('tutor.openDoubts', async (arg?: unknown) => {
+      const course = arg instanceof DoubtCourseItem ? arg.course : activeCourse();
       try {
         const file = ensureDoubtsFile(course);
         if (!file) {
@@ -447,6 +460,9 @@ export function activate(context: vscode.ExtensionContext): void {
         vscode.window.showErrorMessage(`Tutor: ${err instanceof Error ? err.message : err}`);
       }
     }),
+
+    vscode.commands.registerCommand('tutor.openDoubt', (item?: DoubtItem) => (item ? revealDoubt(item) : undefined)),
+    vscode.commands.registerCommand('tutor.refreshDoubts', () => doubts.refresh()),
 
     // Para autores: revisa la estructura de un curso antes de publicarlo
     vscode.commands.registerCommand('tutor.validateCourseFiles', async () => {

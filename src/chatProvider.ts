@@ -5,7 +5,7 @@ import { buildTutorSystemPrompt } from './prompt';
 import { getNonce, renderMarkdown } from './md';
 import { readText } from './content';
 import { recentQuestions, saveDoubt } from './doubts';
-import { Course, TutorContext } from './types';
+import { Chapter, Course, Exercise, TutorContext } from './types';
 
 const CHAT_KEY = 'tutor.chat.v1';
 const MAX_HISTORY = 40;
@@ -92,16 +92,24 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
     return label;
   }
 
-  private buildSystemPrompt(): string {
+  /** Curso, capítulo y ejercicio activos. Con un solo curso instalado, ese es el curso. */
+  private current(): { course?: Course; chapter?: Chapter; exercise?: Exercise } {
     const courses = this.getCourses();
     const ctx = this.getTutorContext();
-    const course = courses.find((c) => c.id === ctx.courseId);
+    const course = courses.find((c) => c.id === ctx.courseId) ?? (courses.length === 1 ? courses[0] : undefined);
     const chapter = course?.capitulos.find((c) => c.id === ctx.chapterId);
     const exercise = chapter?.ejercicios.find((e) => e.id === ctx.exerciseId);
+    return { course, chapter, exercise };
+  }
+
+  private buildSystemPrompt(): string {
+    const ctx = this.getTutorContext();
+    const { course, chapter, exercise } = this.current();
     return buildTutorSystemPrompt({
       language: vscode.workspace.getConfiguration('tutor').get<string>('language') || 'español',
       courseTitle: course?.titulo,
       chapterTitles: course?.capitulos.map((c) => c.titulo) || [],
+      exerciseTitles: course?.capitulos.flatMap((c) => c.ejercicios.map((e) => e.titulo)) || [],
       currentChapterTitle: chapter?.titulo,
       currentChapterContent: chapter ? readText(chapter.archivo) : undefined,
       previousQuestions: recentQuestions(course),
@@ -124,12 +132,9 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
   private saveToDoubts(question: string, answer: string): void {
     if (!vscode.workspace.getConfiguration('tutor').get<boolean>('guardarDudas', true)) return;
     try {
-      const ctx = this.getTutorContext();
-      const course = this.getCourses().find((c) => c.id === ctx.courseId);
-      const chapter = course?.capitulos.find((c) => c.id === ctx.chapterId);
-      const exercise = chapter?.ejercicios.find((e) => e.id === ctx.exerciseId);
+      const { course, chapter, exercise } = this.current();
       if (saveDoubt(course, chapter, exercise, question, answer)) {
-        this.view?.webview.postMessage({ type: 'saved' });
+        this.view?.webview.postMessage({ type: 'saved', course: course?.titulo ?? 'General' });
       }
     } catch {
       /* guardar dudas es un extra: nunca debe romper el chat */
@@ -295,7 +300,7 @@ ${a11yHead(nonce)}
     } else if (msg.type === 'saved') {
       const n = document.createElement('div');
       n.className = 'note';
-      n.innerHTML = 'Guardada en tus dudas · <button class="link" id="openSaved">abrir</button>';
+      n.innerHTML = 'Guardada en dudas de ' + esc(msg.course) + ' · <button class="link">abrir</button>';
       messages.appendChild(n);
       n.querySelector('button').addEventListener('click', () => vscode.postMessage({ type: 'openDoubts' }));
       messages.scrollTop = messages.scrollHeight;

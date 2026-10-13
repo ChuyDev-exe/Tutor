@@ -18,7 +18,8 @@ Funciona en **VS Code**, **Cursor**, **Antigravity**, **VSCodium** y cualquier e
 
 ### Preguntar
 - **Tutor con IA en modo mentor** (OpenAI, Claude, Gemini, OpenRouter, Groq, Ollama, LM Studio u otra API compatible). Orienta con preguntas y pistas sin darte la solución de los ejercicios, y **responde también dudas relacionadas con el tema** (p. ej. C++ en un curso de C).
-- **Tus dudas quedan guardadas**: cada pregunta y respuesta se añade a `dudas-y-preguntas.md` en tu carpeta del curso, ordenadas por día y capítulo. El tutor ve tus dudas anteriores y puede enlazarlas con las nuevas.
+- **Tus dudas quedan guardadas, por curso**: cada pregunta y respuesta se añade a `dudas-y-preguntas.md` en la carpeta del curso en el que estás (las de C nunca se mezclan con las de Python), ordenadas por día y capítulo. La vista **Dudas** del panel Tutor las lista agrupadas por curso; pasa el ratón para leer la respuesta o haz clic para abrirla. El tutor ve tus dudas anteriores y puede enlazarlas con las nuevas.
+- Las respuestas del tutor son **cortas y directas**; nunca resuelve los ejercicios ni evaluaciones del curso.
 - El chat conoce tu archivo y la salida de tu última ejecución, y tiene atajos: pista, «mi error», revisar mi código, explicar el tema y *Mis dudas*.
 
 ### Concentrarte

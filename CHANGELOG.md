@@ -9,7 +9,13 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/).
 - **Ficha del curso:** al hacer clic en un curso se abre una ventana con nombre, descripción, duración total, capítulos, ejercicios, preguntas, requisitos y el **temario** (minutos, ejercicios y evaluación de cada capítulo), con los botones *Descargar/Actualizar* y *Ver en GitHub*. Se cierra con Esc y se puede usar solo con teclado.
 - **Evaluaciones gráficas (`"tipo": "arrastrar"`):** el alumno arrastra cada elemento a la zona a la que pertenece; se aprueba si todos están en su sitio. También funciona con clic o teclado. Al calificar, cada elemento mal colocado indica su zona correcta.
 - **Imágenes** en las evaluaciones (`imagen` en preguntas, zonas y elementos) y en la documentación (manuales, enunciados, pistas, soluciones y `MANUAL.md`): se copian junto a los archivos del alumno para que la vista previa las muestre.
+- **Vista «Dudas»** en el panel Tutor: tus preguntas al tutor y sus respuestas, agrupadas por curso (el curso actual arriba). Clic para abrir la duda en `dudas-y-preguntas.md`; el chat indica en qué curso se guardó.
 - `validate-course` y el esquema validan `arrastrar` y avisan de imágenes inexistentes o fuera del curso. La plantilla de curso incluye un ejemplo de ambas cosas.
+
+### Cambiado
+- El tutor responde de forma **concisa y directa** (~100 palabras, sin rodeos) y conoce la lista de ejercicios del curso para no resolver ninguno, aunque se lo pidan disfrazado de duda general.
+- Con un solo curso instalado, las dudas se guardan en ese curso aunque no haya un capítulo seleccionado.
+- Los `#` dentro de bloques de código de una respuesta ya no se convierten en negritas en el archivo de dudas.
 
 ## [0.4.0] - 2026-10-12
 

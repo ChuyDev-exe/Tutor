@@ -3,6 +3,7 @@ import * as path from 'path';
 import { Chapter, Course, Exercise } from './types';
 import { studentRoot } from './studentFolder';
 import { tutorState } from './state';
+import { DoubtEntry, flattenHeadings, parseDoubts } from './pure';
 
 export const DOUBTS_NAME = 'dudas-y-preguntas.md';
 
@@ -15,8 +16,13 @@ export function doubtsPath(course?: Course): string | undefined {
 
 const pad = (n: number): string => String(n).padStart(2, '0');
 
-/** Los encabezados de la respuesta se bajan a negritas para no romper la estructura del archivo. */
-const flatten = (md: string): string => md.replace(/^#{1,6}\s+(.*)$/gm, '**$1**');
+const listeners = new Set<(course?: Course) => void>();
+
+/** Avisa cada vez que se guarda una duda (la vista «Dudas» se refresca). */
+export function onDoubtSaved(fn: (course?: Course) => void): { dispose(): void } {
+  listeners.add(fn);
+  return { dispose: () => listeners.delete(fn) };
+}
 
 export function ensureDoubtsFile(course?: Course): string | undefined {
   const file = doubtsPath(course);
@@ -55,15 +61,22 @@ export function saveDoubt(
   entry +=
     `### ${time} · ${where}\n\n**Pregunta:** ${first.trim()}\n` +
     (body ? `\n${body.split('\n').map((l) => `> ${l}`).join('\n')}\n` : '') +
-    `\n**Respuesta del tutor:**\n\n${flatten(answer.trim())}\n\n---\n\n`;
+    `\n**Respuesta del tutor:**\n\n${flattenHeadings(answer.trim())}\n\n---\n\n`;
   fs.appendFileSync(file, entry);
+  listeners.forEach((fn) => fn(course));
   return file;
+}
+
+/** Dudas guardadas de un curso (sin curso: las generales del workspace), en orden de guardado. */
+export function listDoubts(course: Course | undefined): DoubtEntry[] {
+  const file = doubtsPath(course);
+  if (!file || !fs.existsSync(file)) return [];
+  return parseDoubts(fs.readFileSync(file, 'utf8'));
 }
 
 /** Últimas preguntas guardadas (para que el tutor pueda enlazar con dudas anteriores). */
 export function recentQuestions(course: Course | undefined, n = 10): string[] {
-  const file = doubtsPath(course);
-  if (!file || !fs.existsSync(file)) return [];
-  const all = [...fs.readFileSync(file, 'utf8').matchAll(/^\*\*Pregunta:\*\* (.*)$/gm)].map((m) => m[1].slice(0, 140));
-  return all.slice(-n);
+  return listDoubts(course)
+    .slice(-n)
+    .map((d) => d.pregunta.slice(0, 140));
 }

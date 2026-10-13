@@ -21,7 +21,7 @@ const vscodeMock = new Proxy({}, {
         get: (_t, m) =>
           m === 'workspaceFolders' ? [{ uri: { fsPath: ws } }]
           : m === 'getConfiguration' ? () => ({ get: (_k, d) => d, update: async () => {} })
-          : m === 'createFileSystemWatcher' ? () => ({ onDidChange() {}, onDidCreate() {}, dispose() {} })
+          : m === 'createFileSystemWatcher' ? () => ({ onDidChange() {}, onDidCreate() {}, onDidDelete() {}, dispose() {} })
           : deep(),
       });
     }
@@ -89,7 +89,7 @@ test('el manifiesto cumple lo mínimo para publicar', () => {
   const undeclared = [...new Set(read)].filter((k) => !props[k]);
   assert.deepEqual(undeclared, [], `ajustes leídos pero no declarados: ${undeclared.join(', ')}`);
   const viewIds = pkg.contributes.views['tutor-container'].map((v) => v.id);
-  for (const id of ['tutorFocus', 'tutorChapters', 'tutorSearch', 'tutorChat']) assert.ok(viewIds.includes(id), `vista ${id}`);
+  for (const id of ['tutorFocus', 'tutorChapters', 'tutorSearch', 'tutorChat', 'tutorDoubts']) assert.ok(viewIds.includes(id), `vista ${id}`);
   assert.ok(pkg.contributes.jsonValidation.every((j) => fsx.existsSync(path.join(root, j.url))), 'esquemas JSON presentes');
   for (const w of pkg.contributes.walkthroughs) {
     for (const s of w.steps) assert.ok(fs.existsSync(path.join(root, s.media.markdown)), `falta ${s.media.markdown}`);

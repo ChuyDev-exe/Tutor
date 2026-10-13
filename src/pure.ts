@@ -244,3 +244,70 @@ export function analyzeScript(text: string): ScriptAnalysis {
   });
   return { lineas: rows.length, comandos, riesgos, sha: createHash('sha256').update(text).digest('hex') };
 }
+
+// ── Archivo de dudas (dudas-y-preguntas.md) ───────────────────────────
+export interface DoubtEntry {
+  dia: string;
+  hora: string;
+  donde: string;
+  pregunta: string;
+  respuesta: string;
+  /** Línea (0-based) del encabezado `### hora · dónde`. */
+  linea: number;
+}
+
+const FENCE = /^\s*(```|~~~)/;
+
+/** Baja los encabezados de una respuesta a negritas (fuera de bloques de código) para no romper el archivo. */
+export function flattenHeadings(md: string): string {
+  let inCode = false;
+  return md
+    .split('\n')
+    .map((l) => {
+      if (FENCE.test(l)) inCode = !inCode;
+      return inCode ? l : l.replace(/^#{1,6}\s+(.*)$/, '**$1**');
+    })
+    .join('\n');
+}
+
+/** Lee las entradas del archivo de dudas en el orden en que se guardaron. */
+export function parseDoubts(md: string): DoubtEntry[] {
+  const rows = md.split(/\r?\n/);
+  const out: DoubtEntry[] = [];
+  let dia = '';
+  let cur: (DoubtEntry & { body: string[] }) | undefined;
+  let inCode = false;
+  const close = (): void => {
+    if (!cur) return;
+    const body = cur.body;
+    const at = body.findIndex((l) => l.trim() === '**Respuesta del tutor:**');
+    const ans = at < 0 ? [] : body.slice(at + 1);
+    while (ans.length && /^(\s*|---)$/.test(ans[ans.length - 1])) ans.pop();
+    const { body: _b, ...entry } = cur;
+    out.push({ ...entry, respuesta: ans.join('\n').trim() });
+    cur = undefined;
+  };
+  rows.forEach((l, i) => {
+    if (FENCE.test(l)) inCode = !inCode;
+    if (!inCode) {
+      const d = /^## (\d{4}-\d{2}-\d{2})\s*$/.exec(l);
+      if (d) {
+        close();
+        dia = d[1];
+        return;
+      }
+      const h = /^### (\d{1,2}:\d{2}) · (.*)$/.exec(l);
+      if (h) {
+        close();
+        cur = { dia, hora: h[1], donde: h[2].trim(), pregunta: '', respuesta: '', linea: i, body: [] };
+        return;
+      }
+    }
+    if (!cur) return;
+    const q = /^\*\*Pregunta:\*\* (.*)$/.exec(l);
+    if (q && !cur.pregunta) cur.pregunta = q[1].trim();
+    else cur.body.push(l);
+  });
+  close();
+  return out;
+}

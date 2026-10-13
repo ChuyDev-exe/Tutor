@@ -96,6 +96,11 @@
           "id": "tutorChat",
           "name": "Tutor",
           "type": "webview"
+        },
+        {
+          "id": "tutorDoubts",
+          "name": "Dudas",
+          "contextualTitle": "Mis dudas por curso"
         }
       ]
     },
@@ -255,6 +260,15 @@
         "command": "tutor.openDoubts",
         "title": "Tutor: Mis dudas y preguntas",
         "icon": "$(comment-discussion)"
+      },
+      {
+        "command": "tutor.openDoubt",
+        "title": "Tutor: Ver duda"
+      },
+      {
+        "command": "tutor.refreshDoubts",
+        "title": "Tutor: Actualizar dudas",
+        "icon": "$(refresh)"
       },
       {
         "command": "tutor.validateCourseFiles",
@@ -530,6 +544,10 @@
       {
         "view": "tutorChapters",
         "contents": "Aún no hay cursos instalados.\n[Importar curso desde carpeta…](command:tutor.importCourseFolder)\n[Buscar cursos en el repositorio](command:tutor.searchRepo)\n[Accesibilidad y enfoque](command:tutor.accessibility)\nTras instalar un curso verás aquí el «Siguiente paso», los capítulos, tus ejercicios y las evaluaciones, sin salir de este panel."
+      },
+      {
+        "view": "tutorDoubts",
+        "contents": "Aún no hay dudas guardadas en este curso.\nPregunta lo que quieras en el chat del tutor: cada pregunta y su respuesta se guardan aquí, separadas por curso.\n[Abrir mis dudas](command:tutor.openDoubts)"
       }
     ],
     "menus": {
@@ -564,6 +582,10 @@
         },
         {
           "command": "tutor.openChapterQuiz",
+          "when": "false"
+        },
+        {
+          "command": "tutor.openDoubt",
           "when": "false"
         }
       ],
@@ -627,6 +649,16 @@
           "command": "tutor.openDoubts",
           "when": "view == tutorChapters",
           "group": "1_misc@4"
+        },
+        {
+          "command": "tutor.openDoubts",
+          "when": "view == tutorDoubts",
+          "group": "navigation@1"
+        },
+        {
+          "command": "tutor.refreshDoubts",
+          "when": "view == tutorDoubts",
+          "group": "navigation@2"
         }
       ],
       "view/item/context": [
@@ -694,6 +726,11 @@
           "command": "tutor.resetExercise",
           "when": "view == tutorChapters && viewItem =~ /^tutorExercise/",
           "group": "2_archivo@2"
+        },
+        {
+          "command": "tutor.openDoubts",
+          "when": "view == tutorDoubts && viewItem == doubtCourse",
+          "group": "inline@1"
         }
       ]
     },

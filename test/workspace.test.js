@@ -78,6 +78,21 @@ test('dudas: guarda pregunta y respuesta, agrupa por día y aplana encabezados',
   assert.deepEqual(doubts.recentQuestions(course, 2), ['Otra duda', 'Duda de otro día']);
 });
 
+test('dudas: cada curso tiene las suyas y no se mezclan', () => {
+  const otro = { ...course, id: 'curso-c', titulo: 'Curso de C' };
+  const seen = [];
+  const sub = doubts.onDoubtSaved((c) => seen.push(c && c.id));
+  const file = doubts.saveDoubt(otro, undefined, undefined, '¿Cómo hago un puntero a constante?', '`const int *p;`');
+  sub.dispose();
+  assert.ok(file.startsWith(path.join(ws, 'curso-c')));
+  assert.deepEqual(seen, ['curso-c']);
+  const c = doubts.listDoubts(otro);
+  assert.equal(c.length, 1);
+  assert.equal(c[0].pregunta, '¿Cómo hago un puntero a constante?');
+  assert.equal(c[0].respuesta, '`const int *p;`');
+  assert.ok(!doubts.listDoubts(course).some((d) => d.pregunta.includes('puntero')), 'no aparece en otro curso');
+});
+
 test('dudas sin curso van a la raíz del workspace', () => {
   const file = doubts.saveDoubt(undefined, undefined, undefined, 'Duda suelta', 'ok');
   assert.equal(file, path.join(ws, 'dudas-y-preguntas.md'));
