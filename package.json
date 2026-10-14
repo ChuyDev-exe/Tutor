@@ -145,6 +145,10 @@
         "icon": "$(settings-gear)"
       },
       {
+        "command": "tutor.setAnthropicWorkspace",
+        "title": "Tutor: Cambiar workspace de Anthropic"
+      },
+      {
         "command": "tutor.setApiKey",
         "title": "Tutor: Establecer API Key"
       },
@@ -232,6 +236,16 @@
         "icon": "$(lightbulb)"
       },
       {
+        "command": "tutor.explainError",
+        "title": "Tutor: ¿Por qué falla mi código?",
+        "icon": "$(question)"
+      },
+      {
+        "command": "tutor.review",
+        "title": "Tutor: Repasar preguntas pendientes",
+        "icon": "$(history)"
+      },
+      {
         "command": "tutor.uninstallCourse",
         "title": "Tutor: Desinstalar curso",
         "icon": "$(trash)"
@@ -317,6 +331,12 @@
             "markdownDescription": "Ejecuta tu código en una terminal interactiva, para programas que piden datos (`input()`, `scanf`…). Desactivado, la salida va a *Salida → Tutor* y el programa no recibe entrada.",
             "order": 3
           },
+          "tutor.erroresEnEditor": {
+            "type": "boolean",
+            "default": true,
+            "markdownDescription": "Marca en tu archivo las líneas donde el compilador o el intérprete encontró un error y ofrece preguntarle al tutor qué significa (sin darte la solución).",
+            "order": 4
+          },
           "tutor.entorno": {
             "type": "string",
             "enum": [
@@ -331,27 +351,27 @@
             ],
             "default": "auto",
             "description": "Dónde se ejecuta tu código.",
-            "order": 4
+            "order": 5
           },
           "tutor.repoGithub": {
             "type": "string",
             "default": "ChuyDev-exe/Tutor-Cursos",
             "scope": "window",
             "markdownDescription": "Repositorio de GitHub con los cursos (`owner/repo`, `owner/repo@rama` o su URL). Cada carpeta con un `curso.json` aparece en la vista *Buscar*. Se ignora si hay `#tutor.repoCatalogUrl#`.",
-            "order": 5
+            "order": 6
           },
           "tutor.repoCatalogUrl": {
             "type": "string",
             "default": "",
             "scope": "window",
             "markdownDescription": "URL (http/https) de un `catalogo.json`. Si la defines, se usa en lugar de `#tutor.repoGithub#`. Formato en el README.",
-            "order": 6
+            "order": 7
           },
           "tutor.contentPath": {
             "type": "string",
             "default": "",
             "description": "Carpeta extra con cursos locales (carpetas que contengan curso.json). Vacío = solo los cursos descargados.",
-            "order": 7
+            "order": 8
           }
         }
       },
@@ -403,11 +423,18 @@
             "scope": "application",
             "order": 3
           },
+          "tutor.anthropicWorkspaceId": {
+            "type": "string",
+            "default": "",
+            "markdownDescription": "Solo Claude (Anthropic): ID del workspace (`wrkspc_…`) para API keys que no están asociadas a un workspace. Se envía como cabecera `anthropic-workspace-id`. Vacío = no se envía.",
+            "scope": "application",
+            "order": 4
+          },
           "tutor.language": {
             "type": "string",
             "default": "español",
             "description": "Idioma en el que el tutor debe responder.",
-            "order": 4
+            "order": 5
           }
         }
       },
@@ -830,6 +857,11 @@
         "command": "tutor.parkThought",
         "key": "ctrl+alt+t p",
         "mac": "cmd+alt+t p"
+      },
+      {
+        "command": "tutor.explainError",
+        "key": "ctrl+alt+t e",
+        "mac": "cmd+alt+t e"
       }
     ],
     "jsonValidation": [

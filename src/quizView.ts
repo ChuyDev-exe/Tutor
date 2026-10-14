@@ -5,6 +5,7 @@ import { Chapter, Course, QuizItem, QuizQuestion } from './types';
 import { gradeQuestion as grade } from './pure';
 import { ChaptersProvider, quizPassed } from './chaptersProvider';
 import { oneQuestionAtATime } from './a11y';
+import { recordReview } from './review';
 
 type Answer = number[] | string;
 
@@ -29,6 +30,8 @@ interface PanelState {
   panel: vscode.WebviewPanel;
   shown: QuizQuestion[];
   practice: boolean;
+  /** Preguntas con las que abrir el panel (repaso); sin ellas, la evaluación completa. */
+  initialIds?: string[];
 }
 
 /** Evaluación del capítulo: calificada en el host (las respuestas correctas nunca viajan al webview). */
@@ -37,7 +40,8 @@ export class QuizViewManager {
 
   constructor(private context: vscode.ExtensionContext, private chapters: ChaptersProvider) {}
 
-  open(course: Course, chapter: Chapter): void {
+  /** Abre la evaluación del capítulo; con `onlyIds`, solo esas preguntas en modo práctica (repaso). */
+  open(course: Course, chapter: Chapter, onlyIds?: string[]): void {
     if (!chapter.evaluacion?.length) {
       vscode.window.showInformationMessage(`El capítulo «${chapter.titulo}» no tiene evaluación.`);
       return;
@@ -46,7 +50,7 @@ export class QuizViewManager {
     const existing = this.panels.get(key);
     if (existing) {
       existing.panel.reveal();
-      this.start(existing, course, chapter);
+      this.start(existing, course, chapter, onlyIds);
       return;
     }
     const panel = vscode.window.createWebviewPanel(
@@ -57,12 +61,12 @@ export class QuizViewManager {
       { enableScripts: true, retainContextWhenHidden: true, localResourceRoots: [vscode.Uri.file(course.root)] }
     );
     registerWebview(panel);
-    const st: PanelState = { panel, shown: [], practice: false };
+    const st: PanelState = { panel, shown: [], practice: false, initialIds: onlyIds };
     this.panels.set(key, st);
     panel.webview.html = this.html(panel.webview);
 
     panel.webview.onDidReceiveMessage((msg) => {
-      if (msg.type === 'ready') this.start(st, course, chapter);
+      if (msg.type === 'ready') this.start(st, course, chapter, st.initialIds);
       else if (msg.type === 'grade') this.onGrade(st, course, chapter, msg.answers || {});
       else if (msg.type === 'retry') this.start(st, course, chapter);
       else if (msg.type === 'retryFailed') this.start(st, course, chapter, msg.ids);
@@ -124,6 +128,8 @@ export class QuizViewManager {
         explicacion: q.explicacion || '',
       };
     });
+    recordReview(course.id, chapter.id, details);
+    this.chapters.refreshTree();
     const score = details.filter((d) => d.ok).length;
     const total = details.length;
     let best = this.chapters.getQuizScore(course.id, chapter.id);
@@ -301,7 +307,7 @@ ${a11yHead(nonce)}
       '<span class="chip">aprobación ≥ ' + msg.aprobacion + '%</span>' +
       (msg.requerida ? '<span class="chip">obligatoria para completar el capítulo</span>' : '') +
       (msg.best ? '<span class="chip">mejor: ' + msg.best.score + '/' + msg.best.total + '</span>' : '');
-    let html = msg.practice ? '<div class="banner info">Práctica de las preguntas falladas: no modifica tu puntaje ni tu historial.</div>' : '';
+    let html = msg.practice ? '<div class="banner info">Práctica (preguntas falladas o de repaso): no modifica tu puntaje ni tu historial.</div>' : '';
     html += '<div class="bar" id="bar"><div></div></div>';
     html += questions.map((q, i) => {
       let body;

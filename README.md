@@ -13,6 +13,8 @@ Funciona en **VS Code**, **Cursor**, **Antigravity**, **VSCodium** y cualquier e
 - **Capítulos que se desbloquean en orden.** El siguiente (su manual y sus archivos) aparece solo al completar el anterior. Un capítulo se completa solo cuando sus ejercicios están resueltos y, si es obligatoria, la evaluación aprobada.
 - **Evaluaciones** de opción única, múltiple, verdadero/falso y respuesta corta; con historial de intentos, aprobación configurable y repetición de solo las falladas.
 - **Pistas graduales**, una por pulsación, acumuladas en `<ejercicio>-pistas.md`.
+- **Errores en tu archivo:** al correr o probar, la línea que señala el compilador o el intérprete se subraya en el editor. Sobre el error, *¿qué significa?* (💡) o el aviso *¿Por qué falla?* de arriba del archivo le pasan la duda al tutor.
+- **Repaso espaciado:** las preguntas que fallas vuelven a los 1, 3, 7, 14 y 30 días. Cuando toca, el panel muestra *Repasar N preguntas*.
 - **Mi progreso:** resumen por capítulo con pruebas, evaluaciones y racha (se puede ocultar).
 - **Actualizaciones de curso por versión**, sin perder tu progreso ni tus archivos.
 
@@ -31,7 +33,7 @@ Funciona en **VS Code**, **Cursor**, **Antigravity**, **VSCodium** y cualquier e
   - Solo el capítulo actual en el árbol; sin progreso global, buscador ni racha. Mensajes de ánimo tranquilos (opcionales).
 - **Accesibilidad:** perfiles (TDAH, autismo, dislexia, alto contraste), sin emojis, sin animaciones, fuente legible, tamaño de texto, interlineado, columna estrecha, lectura en voz alta del enunciado y evaluaciones de una pregunta por pantalla.
 - **Preferencias con interfaz propia** (*Tutor: Preferencias…*): interruptores, deslizadores, perfiles combinables y **vista previa en vivo**. Los ajustes también están agrupados en *Ajustes → Tutor*.
-- **Atajos** (acordes `Ctrl/Cmd+Alt+T` + tecla): `N` siguiente paso · `R` correr · `T` pruebas · `H` pista · `F` temporizador · `P` anotar pensamiento.
+- **Atajos** (acordes `Ctrl/Cmd+Alt+T` + tecla): `N` siguiente paso · `R` correr · `T` pruebas · `H` pista · `E` ¿por qué falla? · `F` temporizador · `P` anotar pensamiento.
 
 ### Preparar tu entorno
 - **Requisitos y setup por curso.** Cada curso declara lo que necesita (p. ej. `gcc`); la extensión lo verifica y te explica cómo instalarlo. Antes de ejecutar un `setup.sh` ves **qué comandos contiene y qué riesgos tiene**.
@@ -86,6 +88,8 @@ Todos empiezan por **Tutor:** en la paleta de comandos (`Ctrl/Cmd+Shift+P`).
 | Ejecutar código / pruebas del ejercicio | Corre tu archivo o sus pruebas |
 | Ver enunciado / pista / solución | Abre cada recurso del ejercicio |
 | Restaurar mi archivo a la plantilla | Vuelve al inicio (deja `.bak`) |
+| ¿Por qué falla mi código? | Lleva el error de la línea actual (o el último fallo) al chat del tutor |
+| Repasar preguntas pendientes | Las preguntas falladas que toca repasar hoy |
 | Mi progreso | Panel con el avance por capítulo |
 | Mis dudas y preguntas · Ver mis pensamientos pendientes | Abren tus archivos de notas |
 | Importar curso desde carpeta · Buscar cursos en el repositorio · Desinstalar curso | Gestión de cursos |
@@ -102,7 +106,7 @@ Se editan en **Tutor: Preferencias…** o en *Ajustes → Tutor IDE* (4 seccione
 
 | Sección | Ajustes |
 |---|---|
-| Aprendizaje | `tutor.autoCompleteOnPass`, `tutor.guardarDudas`, `tutor.correrEnTerminal`, `tutor.entorno` (auto · local · docker), `tutor.repoGithub` (owner/repo), `tutor.repoCatalogUrl` (http/https), `tutor.contentPath` |
+| Aprendizaje | `tutor.autoCompleteOnPass`, `tutor.guardarDudas`, `tutor.correrEnTerminal`, `tutor.erroresEnEditor`, `tutor.entorno` (auto · local · docker), `tutor.repoGithub` (owner/repo), `tutor.repoCatalogUrl` (http/https), `tutor.contentPath` |
 | IA del tutor | `tutor.provider`, `tutor.model`, `tutor.apiBaseUrl`, `tutor.language` (solo a nivel de usuario, salvo el idioma) |
 | Enfoque | `tutor.focus.modoEnfoque`, `.limpiarEditor`, `.unaPreguntaALaVez`, `.temporizadorAutomatico`, `.minutosTrabajo`, `.minutosDescanso`, `.metaDiaria`, `.avisoInactividad`, `.mensajes` |
 | Lectura y accesibilidad | `tutor.accesibilidad.tamanoTexto`, `.espaciado`, `.fuenteLegible`, `.anchoLectura`, `.altoContraste`, `.reducirMovimiento`, `.sinEmojis`, `.ocultarRacha` |

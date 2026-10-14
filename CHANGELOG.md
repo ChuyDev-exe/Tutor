@@ -5,6 +5,9 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/).
 ## [Sin publicar]
 
 ### Añadido
+- **Errores en el editor:** al correr o probar, las líneas donde el compilador o el intérprete encontró un error (gcc/g++, Go, Python, Node, tsx y Bash) se subrayan en tu archivo y aparecen en *Problemas*. Ajuste `tutor.erroresEnEditor`.
+- **«¿Por qué falla?»:** acción rápida sobre cada error (💡 o `Ctrl+.`) y un CodeLens arriba del archivo cuando algo falló; llevan la duda al chat del tutor, que orienta sin dar la solución. Comando *Tutor: ¿Por qué falla mi código?* (`Ctrl/Cmd+Alt+T E`).
+- **Repaso espaciado:** las preguntas que fallas en una evaluación vuelven a los 1, 3, 7, 14 y 30 días hasta que las aciertas en todos (sistema Leitner). El panel muestra *Repasar N preguntas* cuando toca; el repaso no cambia tu puntaje. Comando *Tutor: Repasar preguntas pendientes*.
 - **Buscar → Repositorio** lista al abrirse los cursos del repositorio de GitHub [ChuyDev-exe/Tutor-Cursos](https://github.com/ChuyDev-exe/Tutor-Cursos) (ajuste `tutor.repoGithub`; `tutor.repoCatalogUrl` sigue funcionando y tiene prioridad). Cada tarjeta muestra nivel, duración y número de capítulos.
 - **Ficha del curso:** al hacer clic en un curso se abre una ventana con nombre, descripción, duración total, capítulos, ejercicios, preguntas, requisitos y el **temario** (minutos, ejercicios y evaluación de cada capítulo), con los botones *Descargar/Actualizar* y *Ver en GitHub*. Se cierra con Esc y se puede usar solo con teclado.
 - **Evaluaciones gráficas (`"tipo": "arrastrar"`):** el alumno arrastra cada elemento a la zona a la que pertenece; se aprueba si todos están en su sitio. También funciona con clic o teclado. Al calificar, cada elemento mal colocado indica su zona correcta.

@@ -8,7 +8,7 @@ import { QuizViewManager } from './quizView';
 import { ResultsViewManager } from './resultsView';
 import { StatusBarManager } from './statusBar';
 import { Chapter, Course, Exercise, TutorContext } from './types';
-import { PROVIDERS, ProviderDef, getApiKey, getProviderDef, setApiKey, getActiveConfig, listModels } from './aiClient';
+import { PROVIDERS, ProviderDef, getApiKey, getProviderDef, setApiKey, getActiveConfig, listModels, needsAnthropicWorkspace } from './aiClient';
 import { tutorState } from './state';
 import { renderMarkdown } from './md';
 import { checkRequirements, formatReport, openManual, runSetup, validateOnOpen } from './requirements';
@@ -40,6 +40,8 @@ import { formatIssues, validateCourseDir } from './validator';
 import { ensureDoubtsFile } from './doubts';
 import { DoubtCourseItem, DoubtItem, DoubtsProvider, revealDoubt } from './doubtsView';
 import { copyMarkdown } from './mdAssets';
+import { ErrorHelp, explainPrompt } from './errorHelp';
+import { dueReviews } from './review';
 
 let tutorContext: TutorContext = {};
 
@@ -65,7 +67,8 @@ export function activate(context: vscode.ExtensionContext): void {
   const preferences = new PreferencesPanel(context);
   const doubts = new DoubtsProvider(() => chapters.allCourses, () => tutorContext.courseId);
   const out = vscode.window.createOutputChannel('Tutor');
-  context.subscriptions.push(out);
+  const errorHelp = new ErrorHelp();
+  context.subscriptions.push(out, errorHelp);
 
   const logRun = (title: string, r: RunResult): void => {
     out.clear();
@@ -330,6 +333,7 @@ export function activate(context: vscode.ExtensionContext): void {
       chapters.recordExercise(course.id, chapter.id, exercise.id, { run: true });
       tutorContext = { ...tutorContext, courseId: course.id, chapterId: chapter.id, exerciseId: exercise.id, studentFile: file, lastOutput: summarizeRun(result) };
       statusBar.flashRun(result.ok);
+      errorHelp.report(file, result.ok, summarizeRun(result));
       if (!inTerminal) logRun(exercise.titulo, result);
       if (result.ok) await settleUntested(course, chapter, exercise, true);
     } catch (err) {
@@ -356,6 +360,7 @@ export function activate(context: vscode.ExtensionContext): void {
       statusBar.flashTests(report.passed, report.total);
       logTests(exercise.titulo, report);
       const allOk = report.total > 0 && report.passed === report.total;
+      errorHelp.report(file, allOk, [report.output, ...(report.cases ?? []).map((c) => c.stderr)].filter(Boolean).join('\n'));
       const auto = vscode.workspace.getConfiguration('tutor').get<boolean>('autoCompleteOnPass', true);
       if (allOk && auto && !chapters.isDone(course.id, `${chapter.id}/${exercise.id}`)) {
         await chapters.setExerciseDone(course.id, chapter.id, exercise.id, true);
@@ -699,6 +704,7 @@ export function activate(context: vscode.ExtensionContext): void {
       );
       if (pick !== 'Restaurar') return;
       const file = resetExerciseFile(course, chapter, exercise);
+      errorHelp.report(file, true, '');
       await vscode.window.showTextDocument(vscode.Uri.file(file), { preview: false });
       notify('Tutor: archivo restaurado (copia en .bak).');
     }),
@@ -750,6 +756,47 @@ export function activate(context: vscode.ExtensionContext): void {
       await vscode.commands.executeCommand('markdown.showPreviewToSide', vscode.Uri.file(file));
     }),
 
+    // Desde un error en el editor (acción rápida o CodeLens) o con el atajo: lleva la duda al chat
+    vscode.commands.registerCommand('tutor.explainError', async (uri?: vscode.Uri, line?: number, message?: string) => {
+      const ed = vscode.window.activeTextEditor;
+      if (!uri && ed) {
+        // paleta o atajo: el error del Tutor en la línea del cursor, si lo hay
+        const here = vscode.languages
+          .getDiagnostics(ed.document.uri)
+          .find((d) => d.source === 'Tutor' && d.range.start.line === ed.selection.active.line);
+        if (here) {
+          line = here.range.start.line + 1;
+          message = here.message;
+        }
+      }
+      await chatView.ask(explainPrompt(line, message));
+    }),
+
+    // Repaso espaciado: las preguntas falladas que toca repasar hoy, un capítulo cada vez
+    vscode.commands.registerCommand('tutor.review', async () => {
+      const due = dueReviews(chapters.allCourses);
+      if (!due.length) {
+        notify('No tienes preguntas para repasar hoy. Las que falles en las evaluaciones volverán aquí en unos días.');
+        return;
+      }
+      const pick =
+        due.length === 1
+          ? due[0]
+          : (
+              await vscode.window.showQuickPick(
+                due.map((r) => ({
+                  label: r.chapter.titulo,
+                  description: `${r.course.titulo} · ${r.ids.length} pregunta${r.ids.length === 1 ? '' : 's'}`,
+                  r,
+                })),
+                { title: 'Repasar: elige un capítulo' }
+              )
+            )?.r;
+      if (!pick) return;
+      setContext({ courseId: pick.course.id, chapterId: pick.chapter.id });
+      quizView.open(pick.course, pick.chapter, pick.ids);
+    }),
+
     vscode.commands.registerCommand('tutor.openChapterQuiz', (item?: ChapterItem) => {
       if (item?.course && item.chapter) void vscode.commands.executeCommand('tutor.openQuiz', item.course, item.chapter);
     }),
@@ -780,6 +827,15 @@ export function activate(context: vscode.ExtensionContext): void {
       vscode.window.showInformationMessage('Tutor: API key guardada.');
     }),
 
+    vscode.commands.registerCommand('tutor.setAnthropicWorkspace', async () => {
+      if (!(await askAnthropicWorkspace(false))) return;
+      await chatView.refreshConfig();
+      const ws = vscode.workspace.getConfiguration('tutor').get<string>('anthropicWorkspaceId');
+      vscode.window.showInformationMessage(
+        ws ? `Tutor: workspace de Anthropic → ${ws}` : 'Tutor: sin workspace de Anthropic (se usa el de la API key).'
+      );
+    }),
+
     vscode.commands.registerCommand('tutor.configureAI', async () => {
       const providerId = await pickProvider();
       if (!providerId) return;
@@ -791,6 +847,9 @@ export function activate(context: vscode.ExtensionContext): void {
         if (key === undefined) return;
         if (key.trim()) await setApiKey(context, providerId, key.trim());
       }
+
+      // 1b. Workspace de Anthropic (opcional; obligatorio con claves sin workspace)
+      if (def.kind === 'anthropic' && !(await askAnthropicWorkspace(false))) return;
 
       // 2. URL base: solo se pregunta cuando no es fija (local o compatible)
       let baseUrl = def.baseUrl;
@@ -820,6 +879,10 @@ export function activate(context: vscode.ExtensionContext): void {
           break;
         } catch (err) {
           const reason = err instanceof Error ? err.message : String(err);
+          if (def.kind === 'anthropic' && needsAnthropicWorkspace(reason)) {
+            if (!(await askAnthropicWorkspace(true))) return;
+            continue;
+          }
           const rejected = /HTTP (401|403)/.test(reason);
           const stored = def.needsKey ? !!(await getApiKey(context, providerId)) : true;
           const pick = await vscode.window.showWarningMessage(
@@ -916,7 +979,47 @@ async function askApiKey(context: vscode.ExtensionContext, def: ProviderDef): Pr
     placeHolder: hasKey ? 'déjalo vacío para mantener la actual' : 'pega aquí la clave copiada',
     prompt: def.keyUrl ? `Se obtiene en ${def.keyUrl}` : undefined,
     ignoreFocusOut: true,
+    validateInput: (v) => checkKeyFormat(def, v.trim()),
   });
+}
+
+/**
+ * Pide el ID del workspace de Anthropic y lo guarda. Vacío lo borra, salvo que sea obligatorio.
+ * Devuelve false si el usuario cancela.
+ */
+async function askAnthropicWorkspace(required: boolean): Promise<boolean> {
+  const cfg = vscode.workspace.getConfiguration('tutor');
+  const ws = await vscode.window.showInputBox({
+    title: 'ID del workspace de Anthropic',
+    prompt: required
+      ? 'Tu API key no está asociada a un workspace. Pega el ID del workspace (console.anthropic.com → Settings → Workspaces).'
+      : 'Solo para API keys sin workspace (p. ej. sk-ant-usr-…). Déjalo vacío si tu clave ya pertenece a un workspace.',
+    value: cfg.get<string>('anthropicWorkspaceId') || '',
+    placeHolder: 'wrkspc_…',
+    ignoreFocusOut: true,
+    validateInput: (v) => (required && !v.trim() ? 'Introduce el ID del workspace.' : undefined),
+  });
+  if (ws === undefined) return false;
+  await cfg.update('anthropicWorkspaceId', ws.trim() || undefined, vscode.ConfigurationTarget.Global);
+  return true;
+}
+
+/** Detecta claves pegadas de otro sitio antes de que el proveedor responda 401. */
+function checkKeyFormat(def: ProviderDef, key: string): vscode.InputBoxValidationMessage | undefined {
+  if (!key || def.kind !== 'anthropic') return undefined;
+  if (key.startsWith('sk-ant-admin')) {
+    return {
+      message: 'Es una Admin API key: no sirve para usar Claude. Crea una clave normal (sk-ant-api03-…) en console.anthropic.com/settings/keys.',
+      severity: vscode.InputBoxValidationSeverity.Error,
+    };
+  }
+  if (!key.startsWith('sk-ant-')) {
+    return {
+      message: 'Las API keys de Anthropic empiezan por «sk-ant-api03-». ¿Seguro que es de Claude?',
+      severity: vscode.InputBoxValidationSeverity.Warning,
+    };
+  }
+  return undefined;
 }
 
 async function pickProvider(): Promise<string | undefined> {

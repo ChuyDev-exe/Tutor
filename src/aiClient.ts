@@ -12,6 +12,8 @@ export interface ProviderDef {
   nota?: string;
   /** Página donde el usuario obtiene su API key. */
   keyUrl?: string;
+  /** Página para recargar saldo o créditos. */
+  billingUrl?: string;
 }
 
 /** Proveedores soportados. "openai" = API compatible con /chat/completions. */
@@ -24,6 +26,7 @@ export const PROVIDERS: ProviderDef[] = [
     models: ['gpt-4o', 'gpt-4o-mini', 'gpt-4.1', 'gpt-4.1-mini'],
     needsKey: true,
     keyUrl: 'https://platform.openai.com/api-keys',
+    billingUrl: 'https://platform.openai.com/settings/organization/billing',
   },
   {
     id: 'anthropic',
@@ -38,6 +41,7 @@ export const PROVIDERS: ProviderDef[] = [
     ],
     needsKey: true,
     keyUrl: 'https://console.anthropic.com/settings/keys',
+    billingUrl: 'https://console.anthropic.com/settings/billing',
   },
   {
     id: 'gemini',
@@ -157,6 +161,19 @@ export async function getActiveConfig(
   return { providerId, baseUrl, model, hasKey };
 }
 
+/** Cabeceras de Anthropic; las claves sin workspace exigen `anthropic-workspace-id`. */
+function anthropicHeaders(apiKey: string): Record<string, string> {
+  const headers: Record<string, string> = { 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' };
+  const workspace = (vscode.workspace.getConfiguration('tutor').get<string>('anthropicWorkspaceId') || '').trim();
+  if (workspace) headers['anthropic-workspace-id'] = workspace;
+  return headers;
+}
+
+/** ¿El error de Anthropic pide indicar el workspace? */
+export function needsAnthropicWorkspace(message: string): boolean {
+  return /anthropic-workspace-id|not scoped to a workspace/i.test(message);
+}
+
 /** Pide al proveedor la lista de modelos disponibles. Lanza si no responde o no hay lista. */
 export async function listModels(
   def: ProviderDef,
@@ -171,8 +188,7 @@ export async function listModels(
     const headers: Record<string, string> = { Accept: 'application/json' };
     if (def.kind === 'anthropic') {
       url = `${base}/v1/models?limit=1000`;
-      headers['x-api-key'] = apiKey;
-      headers['anthropic-version'] = '2023-06-01';
+      Object.assign(headers, anthropicHeaders(apiKey));
     } else if (def.kind === 'gemini') {
       url = `${base}/v1beta/models?pageSize=1000`;
       headers['x-goog-api-key'] = apiKey;
@@ -181,7 +197,17 @@ export async function listModels(
       if (apiKey) headers.Authorization = `Bearer ${apiKey}`;
     }
     const res = await fetch(url, { headers, signal: ctl.signal });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    if (!res.ok) {
+      const body = await res.text().catch(() => '');
+      let detail = '';
+      try {
+        const err = JSON.parse(body);
+        detail = err?.error?.message || err?.message || '';
+      } catch {
+        detail = body.slice(0, 200);
+      }
+      throw new Error(`HTTP ${res.status}${detail ? `: ${detail}` : ''}`);
+    }
     const data = (await res.json()) as any;
     let ids: string[];
     if (def.kind === 'gemini') {
@@ -254,7 +280,7 @@ export async function chat(
       signal: controller.signal,
     });
     if (!res.ok) {
-      throw new Error(`Error ${res.status}: ${(await res.text().catch(() => '')).slice(0, 300)}`);
+      throw new Error(friendlyError(def, res.status, await res.text().catch(() => '')));
     }
     let content: string;
     // algunos servidores compatibles ignoran `stream` y responden JSON: se aceptan ambos
@@ -279,6 +305,33 @@ export async function chat(
   } finally {
     clearTimeout(timeout);
   }
+}
+
+/** Traduce los errores habituales del proveedor a un mensaje que diga qué hacer. */
+export function friendlyError(def: ProviderDef, status: number, body: string): string {
+  let detail = body.slice(0, 300);
+  try {
+    const err = JSON.parse(body);
+    detail = err?.error?.message || err?.message || (Array.isArray(err) && err[0]?.error?.message) || detail;
+  } catch {
+    // no es JSON: se muestra tal cual
+  }
+  if (/credit balance|insufficient_quota|exceeded your current quota|billing/i.test(body)) {
+    return `Tu cuenta de ${def.label} no tiene saldo. Recarga créditos${def.billingUrl ? ` en ${def.billingUrl}` : ''} o elige un proveedor gratuito (Gemini tiene capa gratis; Ollama funciona en tu equipo).`;
+  }
+  if (needsAnthropicWorkspace(body)) {
+    return 'Tu API key no pertenece a un workspace. Usa "Tutor: Cambiar workspace de Anthropic" o crea la clave dentro de un workspace.';
+  }
+  if (status === 401 || status === 403) {
+    return `${def.label} rechazó la API key (${detail}). Pega de nuevo la clave en "Tutor: Configurar IA del tutor".`;
+  }
+  if (status === 429) {
+    return `${def.label} está limitando las peticiones (${detail}). Espera un momento y vuelve a intentarlo.`;
+  }
+  if (status === 404 && /model/i.test(body)) {
+    return `${def.label} no encuentra el modelo (${detail}). Elige otro en "Tutor: Configurar IA del tutor".`;
+  }
+  return `Error ${status}: ${detail}`;
 }
 
 interface ProviderRequest {
@@ -341,7 +394,7 @@ function openAIRequest(baseUrl: string, model: string, apiKey: string, systemPro
 function anthropicRequest(baseUrl: string, model: string, apiKey: string, systemPrompt: string, history: ChatMessage[]): ProviderRequest {
   return {
     url: `${baseUrl.replace(/\/+$/, '')}/v1/messages`,
-    headers: { 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },
+    headers: anthropicHeaders(apiKey),
     body: {
       model,
       stream: true,

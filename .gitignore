@@ -6,3 +6,6 @@ dist/
 examples/workspace/*
 !examples/workspace/.vscode
 !examples/workspace/.gitignore
+
+# credenciales locales: nunca al repo ni al .vsix
+at

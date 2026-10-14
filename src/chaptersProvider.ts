@@ -3,8 +3,9 @@ import { Chapter, Course, Exercise } from './types';
 import { loadCourses } from './content';
 import { focusMode, noEmojis, stripEmoji, ui } from './a11y';
 import { QuizAttempt, QuizRecord, tutorState } from './state';
+import { dueCount } from './review';
 
-export type ChapterNode = NextStepItem | CourseItem | ChapterItem | ExerciseItem;
+export type ChapterNode = NextStepItem | ReviewItem | CourseItem | ChapterItem | ExerciseItem;
 
 export interface NextStep {
   course: Course;
@@ -115,6 +116,8 @@ export class ChaptersProvider implements vscode.TreeDataProvider<ChapterNode> {
           break; // una sola sugerencia a la vez: menos carga de decisión
         }
       }
+      const due = focusMode() ? 0 : dueCount(this.courses);
+      if (due) nodes.push(new ReviewItem(due));
       return nodes.concat(this.courses.map((c) => new CourseItem(c, this.summary(c), expanded)));
     }
     if (element instanceof CourseItem) {
@@ -460,5 +463,16 @@ export class NextStepItem extends vscode.TreeItem {
     this.iconPath = new vscode.ThemeIcon('arrow-right', new vscode.ThemeColor('charts.blue'));
     this.command = { command: 'tutor.nextStep', title: 'Siguiente paso', arguments: [step.course.id] };
     this.contextValue = 'tutorNext';
+  }
+}
+
+export class ReviewItem extends vscode.TreeItem {
+  constructor(count: number) {
+    super(ui(`Repasar ${count} pregunta${count === 1 ? '' : 's'}`), vscode.TreeItemCollapsibleState.None);
+    this.id = 'review';
+    this.tooltip = 'Preguntas que fallaste en las evaluaciones y que toca repasar hoy (vuelven a los 1, 3, 7, 14 y 30 días).';
+    this.iconPath = new vscode.ThemeIcon('history', new vscode.ThemeColor('charts.purple'));
+    this.command = { command: 'tutor.review', title: 'Repasar preguntas pendientes' };
+    this.contextValue = 'tutorReview';
   }
 }

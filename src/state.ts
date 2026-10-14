@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import * as path from 'path';
 import * as fs from 'fs';
 import { createHash } from 'crypto';
+import type { ReviewCard } from './pure';
 
 export interface QuizAttempt {
   fecha: string;
@@ -43,6 +44,8 @@ export interface TutorFile {
   confiables?: Record<string, string[]>;
   /** Estadísticas de enfoque por día (YYYY-MM-DD). */
   enfoque: Record<string, FocusDay>;
+  /** Preguntas falladas por repasar: `<curso>/<capítulo>/<pregunta>` → tarjeta de Leitner. */
+  repaso?: Record<string, ReviewCard>;
 }
 
 const today = (): string => new Date().toISOString().slice(0, 10);
@@ -89,6 +92,7 @@ export class TutorState {
       ejercicios: {},
       actividad: [],
       enfoque: {},
+      repaso: {},
     };
   }
 
@@ -190,6 +194,7 @@ export class TutorState {
     d.progreso = keep(d.progreso);
     d.evaluaciones = keep(d.evaluaciones);
     d.ejercicios = keep(d.ejercicios);
+    d.repaso = keep(d.repaso ?? {});
     if (!courseId) d.enfoque = {};
     this.save();
   }

@@ -19,6 +19,8 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
   private view?: vscode.WebviewView;
   private history: ChatMessage[] = [];
   private busy = false;
+  /** Pregunta enviada desde fuera (p. ej. un error en el editor) antes de que el panel existiera. */
+  private pending?: string;
 
   constructor(
     private context: vscode.ExtensionContext,
@@ -54,7 +56,27 @@ export class ChatViewProvider implements vscode.WebviewViewProvider {
       }
     });
 
-    void this.pushInitialState();
+    void this.pushInitialState().then(() => {
+      const text = this.pending;
+      this.pending = undefined;
+      if (text) void this.onSend(text);
+    });
+  }
+
+  /** Muestra el chat y le envía `text` como si el alumno lo hubiera escrito. */
+  async ask(text: string): Promise<void> {
+    if (this.busy) {
+      vscode.window.setStatusBarMessage('El tutor aún está respondiendo; pregunta de nuevo en un momento.', 5000);
+      return;
+    }
+    const focus = () => vscode.commands.executeCommand(`${ChatViewProvider.viewType}.focus`);
+    if (this.view) {
+      await focus();
+      await this.onSend(text);
+      return;
+    }
+    this.pending = text; // resolveWebviewView la envía al crear el panel
+    await focus();
   }
 
   /** Llamar tras configurar la IA para actualizar el estado del chat. */

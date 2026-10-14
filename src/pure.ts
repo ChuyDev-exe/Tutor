@@ -311,3 +311,105 @@ export function parseDoubts(md: string): DoubtEntry[] {
   close();
   return out;
 }
+
+// ── Errores del compilador o intérprete → líneas del archivo del alumno ──
+
+export interface ErrorLocation {
+  /** Línea (desde 1). */
+  line: number;
+  /** Columna (desde 1), si el compilador la indica. */
+  col?: number;
+  message: string;
+  severity: 'error' | 'warning';
+}
+
+const baseName = (p: string): string => p.trim().split(/[\\/]/).pop() || p;
+
+/** Línea con el nombre de una excepción: `NameError: …`, `TypeError: …`, `KeyboardInterrupt`. */
+const EXCEPTION = /^([A-Z]\w*(?:Error|Exception)|KeyboardInterrupt)\b(:.*)?$/;
+
+/**
+ * Extrae de la salida de gcc/g++, go, python, node, tsx y bash los errores que apuntan a `file`.
+ * Compara por nombre de archivo, así funciona también con las rutas de Docker.
+ */
+export function parseErrorLocations(output: string, file: string): ErrorLocation[] {
+  const name = baseName(file);
+  const ours = (p: string): boolean => baseName(p) === name;
+  const found: ErrorLocation[] = [];
+  const seen = new Set<string>();
+  const add = (line: number, col: number | undefined, message: string, severity: ErrorLocation['severity'] = 'error'): void => {
+    message = message.trim();
+    if (!(line >= 1) || !message) return;
+    const key = `${line}:${message}`;
+    if (seen.has(key)) return;
+    seen.add(key);
+    found.push({ line, col: col && col >= 1 ? col : undefined, message, severity });
+  };
+
+  const rows = output.replace(/\x1b\[[0-9;]*m/g, '').split(/\r?\n/);
+  const exceptions = rows.map((r) => r.trim()).filter((r) => EXCEPTION.test(r));
+  let pyLine = 0; // python: el último marco del traceback en el archivo del alumno
+  let jsLine: { line: number; col?: number } | undefined; // node/tsx: el primer marco de la pila
+  let jsHeader = 0; // node: «ruta:línea» antes del código (también en errores de sintaxis, sin pila)
+  let goLine = 0; // go: panic en tiempo de ejecución
+  let esbuild = ''; // tsx: «✘ [ERROR] mensaje» va en la línea anterior a «archivo.ts:3:4:»
+
+  for (const row of rows) {
+    let m: RegExpExecArray | null;
+    const tag = /\[ERROR\]\s*(.+)$/.exec(row);
+    if (tag) esbuild = tag[1];
+    if ((m = /^\s*File "(.+?)", line (\d+)/.exec(row))) {
+      if (ours(m[1])) pyLine = Number(m[2]);
+    } else if ((m = /^\s*at .*?\(?((?:[A-Za-z]:)?[^\s()]+):(\d+):(\d+)\)?\s*$/.exec(row))) {
+      if (!jsLine && ours(m[1].replace(/^file:\/\//, ''))) jsLine = { line: Number(m[2]), col: Number(m[3]) };
+    } else if ((m = /^\s+(\S+\.go):(\d+) \+0x/.exec(row))) {
+      if (!goLine && ours(m[1])) goLine = Number(m[2]);
+    } else if ((m = /^(.+?): line (\d+): (.*)$/.exec(row))) {
+      if (ours(m[1])) add(Number(m[2]), undefined, m[3]); // bash
+    } else if ((m = /^(.+?):(\d+):(?:(\d+):)?\s*(?:(fatal error|error|warning|note|ERROR|WARNING)\s*:)?\s*(.*)$/.exec(row))) {
+      // gcc, g++, clang, go build, esbuild (tsx)
+      const kind = (m[4] || 'error').toLowerCase();
+      const msg = m[5] || esbuild;
+      if (ours(m[1]) && kind !== 'note') add(Number(m[2]), m[3] ? Number(m[3]) : undefined, msg, kind === 'warning' ? 'warning' : 'error');
+    } else if ((m = /^((?:[A-Za-z]:)?[^\s:]+):(\d+)$/.exec(row))) {
+      // node: un error de sintaxis empieza con «ruta:línea» y no trae marco de pila del alumno
+      if (!jsHeader && ours(m[1])) jsHeader = Number(m[2]);
+    }
+  }
+  // python imprime la excepción al final del traceback; node, antes de la pila
+  if (pyLine) add(pyLine, undefined, exceptions[exceptions.length - 1] || 'Error al ejecutar esta línea');
+  if (jsLine ?? jsHeader) add(jsLine?.line ?? jsHeader, jsLine?.col, exceptions[0] || 'Error al ejecutar esta línea');
+  if (goLine) add(goLine, undefined, rows.find((r) => r.startsWith('panic:'))?.trim() || 'panic');
+  return found;
+}
+
+// ── Repaso espaciado (sistema Leitner) de las preguntas de evaluación ──
+
+export interface ReviewCard {
+  /** Caja de Leitner: 0 = recién fallada; cada acierto en su día la sube una. */
+  caja: number;
+  /** Día (YYYY-MM-DD) a partir del cual toca repasarla. */
+  proxima: string;
+}
+
+/** Días de espera tras cada caja; al acertar en la última, la pregunta se da por aprendida. */
+export const REVIEW_DAYS = [1, 3, 7, 14, 30];
+
+export function addDays(day: string, n: number): string {
+  const d = new Date(`${day}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + n);
+  return d.toISOString().slice(0, 10);
+}
+
+export const isDue = (card: ReviewCard, today: string): boolean => card.proxima <= today;
+
+/**
+ * Nueva tarjeta tras responder una pregunta. undefined = no hay nada que repasar
+ * (nunca se falló o ya se aprendió). Acertar antes de tiempo no la adelanta.
+ */
+export function reviewAfterAnswer(card: ReviewCard | undefined, ok: boolean, today: string): ReviewCard | undefined {
+  if (!ok) return { caja: 0, proxima: addDays(today, REVIEW_DAYS[0]) };
+  if (!card || !isDue(card, today)) return card;
+  const caja = card.caja + 1;
+  return caja >= REVIEW_DAYS.length ? undefined : { caja, proxima: addDays(today, REVIEW_DAYS[caja]) };
+}
