@@ -41,7 +41,8 @@ Funciona en **VS Code**, **Cursor**, **Antigravity**, **VSCodium** y cualquier e
 ## Primeros pasos
 
 1. Abre una carpeta de trabajo.
-2. Instala un curso: abre la vista **Buscar → Repositorio**, que lista los cursos de [ChuyDev-exe/Tutor-Cursos](https://github.com/ChuyDev-exe/Tutor-Cursos); haz clic en uno para ver su temario y duración, y pulsa **Descargar**. También puedes usar **Tutor: Importar curso desde carpeta…**.
+2. Abre el panel **Tutor**: la primera vez se descargan solos los cursos de [ChuyDev-exe/Tutor-Cursos](https://github.com/ChuyDev-exe/Tutor-Cursos). En **Buscar → Repositorio** puedes ver la ficha de cada curso (temario y duración) y descargar los nuevos.
+   - **¿Tienes tus propios cursos?** Pega la URL de tu repositorio de GitHub en el buscador de *Repositorio* (o usa **Tutor: Agregar repositorio de cursos…**): sus cursos aparecen junto a los oficiales. También puedes usar **Tutor: Importar curso desde carpeta…**.
 3. Sigue el **Siguiente paso** del panel Tutor.
 
 La guía interactiva está en *Ayuda → Introducción → Empieza con Tutor IDE*.
@@ -92,7 +93,7 @@ Todos empiezan por **Tutor:** en la paleta de comandos (`Ctrl/Cmd+Shift+P`).
 | Repasar preguntas pendientes | Las preguntas falladas que toca repasar hoy |
 | Mi progreso | Panel con el avance por capítulo |
 | Mis dudas y preguntas · Ver mis pensamientos pendientes | Abren tus archivos de notas |
-| Importar curso desde carpeta · Buscar cursos en el repositorio · Desinstalar curso | Gestión de cursos |
+| Importar curso desde carpeta · Buscar cursos en el repositorio · Agregar / Quitar repositorio de cursos · Desinstalar curso | Gestión de cursos |
 | Verificar requisitos · Ejecutar setup · Abrir manual de configuración | Preparar el entorno del curso |
 | Configurar IA del tutor · Establecer API Key | Proveedor, modelo y clave |
 | Preferencias… · Perfiles de accesibilidad (menú rápido) | Enfoque y accesibilidad |
@@ -106,7 +107,7 @@ Se editan en **Tutor: Preferencias…** o en *Ajustes → Tutor IDE* (4 seccione
 
 | Sección | Ajustes |
 |---|---|
-| Aprendizaje | `tutor.autoCompleteOnPass`, `tutor.guardarDudas`, `tutor.correrEnTerminal`, `tutor.erroresEnEditor`, `tutor.entorno` (auto · local · docker), `tutor.repoGithub` (owner/repo), `tutor.repoCatalogUrl` (http/https), `tutor.contentPath` |
+| Aprendizaje | `tutor.autoCompleteOnPass`, `tutor.guardarDudas`, `tutor.correrEnTerminal`, `tutor.erroresEnEditor`, `tutor.entorno` (auto · local · docker), `tutor.instalarCursosIniciales`, `tutor.repoGithub` (owner/repo), `tutor.repositorios` (tus repositorios), `tutor.repoCatalogUrl` (http/https), `tutor.contentPath` |
 | IA del tutor | `tutor.provider`, `tutor.model`, `tutor.apiBaseUrl`, `tutor.language` (solo a nivel de usuario, salvo el idioma) |
 | Enfoque | `tutor.focus.modoEnfoque`, `.limpiarEditor`, `.unaPreguntaALaVez`, `.temporizadorAutomatico`, `.minutosTrabajo`, `.minutosDescanso`, `.metaDiaria`, `.avisoInactividad`, `.mensajes` |
 | Lectura y accesibilidad | `tutor.accesibilidad.tamanoTexto`, `.espaciado`, `.fuenteLegible`, `.anchoLectura`, `.altoContraste`, `.reducirMovimiento`, `.sinEmojis`, `.ocultarRacha` |

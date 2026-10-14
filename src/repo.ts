@@ -18,6 +18,39 @@ export function getGithubRepo(): string {
   return vscode.workspace.getConfiguration('tutor').get<string>('repoGithub')?.trim() || '';
 }
 
+/** Repositorios de GitHub que el alumno agregó (además del oficial). */
+export function getExtraRepos(): string[] {
+  const list = vscode.workspace.getConfiguration('tutor').get<string[]>('repositorios') ?? [];
+  return (Array.isArray(list) ? list : []).map((s) => String(s).trim()).filter(Boolean);
+}
+
+/** «owner/repo» o «owner/repo@rama», para comparar y guardar. */
+const repoId = (spec: string): string | undefined => {
+  const gh = parseGithubRepo(spec);
+  return gh && `${gh.owner}/${gh.repo}${gh.ref === 'HEAD' ? '' : `@${gh.ref}`}`;
+};
+
+/** Agrega un repositorio (URL u owner/repo) a `tutor.repositorios`. Devuelve su nombre normalizado. */
+export async function addRepo(spec: string): Promise<string> {
+  const id = repoId(spec);
+  if (!id) throw new Error(`«${spec}» no es un repositorio de GitHub. Usa https://github.com/owner/repo u owner/repo.`);
+  const same = (s: string) => repoId(s)?.toLowerCase() === id.toLowerCase();
+  if (same(getGithubRepo()) || getExtraRepos().some(same)) return id;
+  await vscode.workspace
+    .getConfiguration('tutor')
+    .update('repositorios', [...getExtraRepos(), id], vscode.ConfigurationTarget.Global);
+  cache = undefined;
+  return id;
+}
+
+export async function removeRepo(spec: string): Promise<void> {
+  const id = repoId(spec)?.toLowerCase();
+  await vscode.workspace
+    .getConfiguration('tutor')
+    .update('repositorios', getExtraRepos().filter((s) => repoId(s)?.toLowerCase() !== id), vscode.ConfigurationTarget.Global);
+  cache = undefined;
+}
+
 /** Lista de cursos disponibles y de dónde salen. */
 export interface RepoListing {
   nombre: string;
@@ -31,30 +64,90 @@ export interface RepoListing {
 const CACHE_MS = 5 * 60 * 1000;
 let cache: { key: string; at: number; listing: RepoListing } | undefined;
 
+/** Cursos del repositorio principal: `tutor.repoCatalogUrl` (un catalogo.json) o, si no hay, `tutor.repoGithub`. */
+async function listMain(): Promise<RepoListing> {
+  const catalogUrl = getCatalogUrl();
+  const github = getGithubRepo();
+  if (!catalogUrl) {
+    if (!github) throw new Error('Configura tutor.repoGithub (owner/repo) o tutor.repoCatalogUrl para ver cursos.');
+    return listFromGithub(github);
+  }
+  // una URL de repositorio de GitHub en el ajuste del catálogo es un error habitual: se lee como repositorio
+  if (/github\.com\//i.test(catalogUrl) && parseGithubRepo(catalogUrl)) return listFromGithub(catalogUrl);
+  try {
+    return await listFromCatalog(catalogUrl);
+  } catch (err) {
+    // un catálogo caído o mal escrito no deja al alumno sin cursos si hay repositorio de GitHub
+    if (!github) throw err;
+    const listing = await listFromGithub(github);
+    listing.aviso = `${err instanceof Error ? err.message : err} Se muestran los cursos de ${listing.nombre}.`;
+    return listing;
+  }
+}
+
 /**
- * Cursos disponibles: los de `tutor.repoCatalogUrl` (un catalogo.json) si está configurado;
- * si no, los del repositorio de GitHub `tutor.repoGithub` (cada carpeta con un curso.json).
+ * Cursos disponibles: los del repositorio principal más los de `tutor.repositorios`.
+ * Si un repositorio falla, los demás se muestran igual con un aviso. Con ids repetidos gana el primero.
  * El resultado se guarda unos minutos; `force` lo vuelve a leer.
  */
 export async function listRepoCourses(force = false): Promise<RepoListing> {
-  const catalogUrl = getCatalogUrl();
-  const github = getGithubRepo();
-  const key = catalogUrl ? `catalogo:${catalogUrl}` : `github:${github}`;
+  // sin repetidos ni el principal (si alguien lo agregó también a mano)
+  const seen = new Set([repoId(getGithubRepo())?.toLowerCase()]);
+  const extras = getExtraRepos().filter((r) => {
+    const id = repoId(r)?.toLowerCase() ?? r;
+    return !seen.has(id) && !!seen.add(id);
+  });
+  const key = JSON.stringify([getCatalogUrl(), getGithubRepo(), extras]);
   if (!force && cache && cache.key === key && Date.now() - cache.at < CACHE_MS) return cache.listing;
-  let listing: RepoListing;
-  if (catalogUrl) {
-    try {
-      listing = await listFromCatalog(catalogUrl);
-    } catch (err) {
-      // un catálogo caído o mal escrito no deja al alumno sin cursos si hay repositorio de GitHub
-      if (!github) throw err;
-      listing = await listFromGithub(github);
-      listing.aviso = `${err instanceof Error ? err.message : err} Se muestran los cursos de ${listing.nombre}.`;
+  const results = await Promise.allSettled([listMain(), ...extras.map((r) => listFromGithub(r))]);
+  const avisos: string[] = [];
+  const cursos: RepoCourseEntry[] = [];
+  const names: string[] = [];
+  let webUrl: string | undefined;
+  results.forEach((r, i) => {
+    const source = i === 0 ? 'el repositorio principal' : extras[i - 1];
+    if (r.status === 'rejected') {
+      avisos.push(i === 0 ? String(r.reason instanceof Error ? r.reason.message : r.reason) : `${source}: ${r.reason instanceof Error ? r.reason.message : r.reason}`);
+      return;
     }
-  } else if (github) listing = await listFromGithub(github);
-  else throw new Error('Configura tutor.repoGithub (owner/repo) o tutor.repoCatalogUrl para ver cursos.');
+    names.push(r.value.nombre);
+    webUrl ??= r.value.webUrl;
+    if (r.value.aviso) avisos.push(r.value.aviso);
+    for (const c of r.value.cursos) {
+      const dup = cursos.find((x) => x.id === c.id);
+      if (dup) avisos.push(`«${c.titulo}» de ${r.value.nombre} se omitió: ${dup.repo} ya tiene un curso con el id «${c.id}».`);
+      else cursos.push({ ...c, repo: r.value.nombre });
+    }
+  });
+  if (!names.length) throw new Error(avisos.join(' '));
+  const listing: RepoListing = {
+    nombre: names.join(' · '),
+    webUrl,
+    aviso: avisos.join(' ') || undefined,
+    cursos,
+  };
   cache = { key, at: Date.now(), listing };
   return listing;
+}
+
+/**
+ * Descarga los cursos del repositorio oficial que aún no están instalados (cursos de inicio).
+ * Devuelve los ids instalados y los errores de los que fallaron.
+ */
+export async function installStarterCourses(installed: string[]): Promise<{ ids: string[]; errores: string[] }> {
+  const listing = await listFromGithub(getGithubRepo() || DEFAULT_GITHUB_REPO);
+  const ids: string[] = [];
+  const errores: string[] = [];
+  for (const entry of listing.cursos) {
+    if (installed.includes(entry.id)) continue;
+    try {
+      await downloadCourse(entry);
+      ids.push(entry.id);
+    } catch (err) {
+      errores.push(`${entry.titulo}: ${err instanceof Error ? err.message : err}`);
+    }
+  }
+  return { ids, errores };
 }
 
 /** Busca un curso en la última lista leída (el webview solo envía ids: el resto lo decide el host). */

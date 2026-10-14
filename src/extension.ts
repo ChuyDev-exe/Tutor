@@ -42,6 +42,7 @@ import { DoubtCourseItem, DoubtItem, DoubtsProvider, revealDoubt } from './doubt
 import { copyMarkdown } from './mdAssets';
 import { ErrorHelp, explainPrompt } from './errorHelp';
 import { dueReviews } from './review';
+import { addRepo, getExtraRepos, installStarterCourses, removeRepo } from './repo';
 
 let tutorContext: TutorContext = {};
 
@@ -210,6 +211,44 @@ export function activate(context: vscode.ExtensionContext): void {
     isUnlocked: (id: string, index: number) => chapters.isChapterUnlocked(id, index),
   }));
   context.subscriptions.push(vscode.window.registerWebviewViewProvider(SearchViewProvider.viewType, searchView));
+
+  // Cursos de inicio: la primera vez que se abre el panel Tutor en una carpeta sin cursos se
+  // descargan los del repositorio oficial. Se espera a que el alumno abra el panel para no llenar
+  // de archivos cualquier proyecto que abra con el editor; si luego desinstala un curso, no vuelve.
+  const STARTER_KEY = 'tutor.cursosIniciales';
+  let installingStarter = false;
+  const installStarter = async (): Promise<void> => {
+    const enabled = vscode.workspace.getConfiguration('tutor').get<boolean>('instalarCursosIniciales', true);
+    if (!enabled || installingStarter || context.workspaceState.get<boolean>(STARTER_KEY)) return;
+    if (!vscode.workspace.workspaceFolders?.length || chapters.allCourses.length) return;
+    installingStarter = true;
+    try {
+      const { ids, errores } = await installStarterCourses(chapters.allCourses.map((c) => c.id));
+      if (ids.length) {
+        await context.workspaceState.update(STARTER_KEY, true);
+        chapters.reload();
+        for (const id of ids) {
+          const course = chapters.allCourses.find((c) => c.id === id);
+          if (course) syncFolder(course);
+        }
+        updateMeta();
+        void searchView.refresh();
+        notify(`Tutor: se instalaron ${ids.length} curso(s) para empezar. Sigue el «Siguiente paso» del panel Tutor.`);
+      }
+      if (errores.length) {
+        vscode.window.showWarningMessage(`Tutor: no se pudieron descargar algunos cursos (${errores.join('; ')}). Búscalos en Buscar → Repositorio.`);
+      }
+    } catch (err) {
+      // sin red o GitHub limitado: se reintenta la próxima vez que se abra el panel
+      vscode.window.showWarningMessage(
+        `Tutor: no se pudieron descargar los cursos de inicio (${err instanceof Error ? err.message : err}). Se reintentará al volver a abrir el panel.`
+      );
+    } finally {
+      installingStarter = false;
+    }
+  };
+  context.subscriptions.push(chaptersTree.onDidChangeVisibility((e) => e.visible && void installStarter()));
+  if (chaptersTree.visible === true) void installStarter();
 
   const chatView = new ChatViewProvider(context, () => chapters.allCourses, () => tutorContext);
   context.subscriptions.push(
@@ -445,6 +484,42 @@ export function activate(context: vscode.ExtensionContext): void {
 
     vscode.commands.registerCommand('tutor.searchRepo', () => {
       void vscode.commands.executeCommand('tutorSearch.focus');
+    }),
+
+    // Repositorios propios del alumno: sus cursos aparecen en Buscar junto a los oficiales
+    vscode.commands.registerCommand('tutor.addRepo', async () => {
+      const spec = await vscode.window.showInputBox({
+        title: 'Agregar repositorio de cursos',
+        prompt: 'Repositorio público de GitHub donde cada carpeta con un curso.json es un curso.',
+        placeHolder: 'https://github.com/owner/repo  ·  owner/repo  ·  owner/repo@rama',
+        ignoreFocusOut: true,
+        validateInput: (v) => (v.trim() ? undefined : 'Pega la URL del repositorio'),
+      });
+      if (!spec) return;
+      try {
+        const name = await addRepo(spec);
+        await vscode.commands.executeCommand('tutorSearch.focus');
+        await searchView.refresh(true);
+        notify(`Tutor: repositorio ${name} agregado. Sus cursos aparecen en Buscar → Repositorio.`);
+      } catch (err) {
+        vscode.window.showErrorMessage(`Tutor: ${err instanceof Error ? err.message : err}`);
+      }
+    }),
+
+    vscode.commands.registerCommand('tutor.removeRepo', async () => {
+      const repos = getExtraRepos();
+      if (!repos.length) {
+        notify('Tutor: no has agregado repositorios propios (el oficial no se puede quitar).');
+        return;
+      }
+      const pick = await vscode.window.showQuickPick(repos, {
+        title: 'Quitar repositorio de cursos',
+        placeHolder: 'Los cursos que ya descargaste se conservan',
+      });
+      if (!pick) return;
+      await removeRepo(pick);
+      await searchView.refresh(true);
+      notify(`Tutor: repositorio ${pick} quitado.`);
     }),
 
     vscode.commands.registerCommand('tutor.dashboard', () => {

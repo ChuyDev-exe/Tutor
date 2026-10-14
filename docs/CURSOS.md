@@ -151,6 +151,8 @@ mi-repo/
 
 La vista **Buscar → Repositorio** lista los cursos de `tutor.repoGithub` (por defecto [`ChuyDev-exe/Tutor-Cursos`](https://github.com/ChuyDev-exe/Tutor-Cursos)): cada carpeta con un `curso.json`. Al elegir uno se abre su **ficha** con el temario (capítulos, minutos, ejercicios y preguntas de cada uno), la duración total (suma de `minutos`), requisitos y el botón **Descargar** o **Actualizar**. Se descargan todos los archivos de la carpeta (salvo los ocultos, como `.DS_Store`). Formatos aceptados: `owner/repo`, `owner/repo@rama` o la URL del repositorio.
 
+La primera vez que se abre el panel Tutor en una carpeta sin cursos, los de `tutor.repoGithub` se descargan solos (`tutor.instalarCursosIniciales`). Para publicar **tus propios cursos**, súbelos a un repositorio público de GitHub con la misma estructura: quien pegue su URL en el buscador de *Repositorio* (o la añada a `tutor.repositorios`) verá tus cursos junto a los oficiales.
+
 ## catalogo.json
 
 Alternativa a GitHub para servir cursos desde cualquier web. Si `tutor.repoCatalogUrl` tiene valor, se usa en lugar de `tutor.repoGithub`.

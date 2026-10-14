@@ -120,6 +120,8 @@ export interface RepoCourseEntry {
   webUrl?: string;
   /** Resumen del curso.json (temario, duración…), si ya se leyó. */
   resumen?: CourseSummary;
+  /** Repositorio del que sale (p. ej. «owner/repo»); lo pone la extensión. */
+  repo?: string;
 }
 
 /** Temario y cifras de un curso, calculados a partir de su curso.json. */

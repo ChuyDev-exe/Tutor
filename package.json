@@ -162,6 +162,15 @@
         "icon": "$(search)"
       },
       {
+        "command": "tutor.addRepo",
+        "title": "Tutor: Agregar repositorio de cursos…",
+        "icon": "$(repo-clone)"
+      },
+      {
+        "command": "tutor.removeRepo",
+        "title": "Tutor: Quitar repositorio de cursos…"
+      },
+      {
         "command": "tutor.checkRequirements",
         "title": "Tutor: Verificar requisitos del curso",
         "icon": "$(checklist)"
@@ -353,25 +362,40 @@
             "description": "Dónde se ejecuta tu código.",
             "order": 5
           },
+          "tutor.instalarCursosIniciales": {
+            "type": "boolean",
+            "default": true,
+            "markdownDescription": "La primera vez que abres el panel Tutor en una carpeta sin cursos, descarga los cursos de `#tutor.repoGithub#` para que puedas empezar enseguida. Solo ocurre una vez por carpeta.",
+            "order": 6
+          },
           "tutor.repoGithub": {
             "type": "string",
             "default": "ChuyDev-exe/Tutor-Cursos",
             "scope": "window",
             "markdownDescription": "Repositorio de GitHub con los cursos (`owner/repo`, `owner/repo@rama` o su URL). Cada carpeta con un `curso.json` aparece en la vista *Buscar*. Se ignora si hay `#tutor.repoCatalogUrl#`.",
-            "order": 6
+            "order": 7
+          },
+          "tutor.repositorios": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "default": [],
+            "markdownDescription": "Tus propios repositorios de GitHub con cursos (`owner/repo`, `owner/repo@rama` o su URL). Sus cursos aparecen en *Buscar → Repositorio* junto a los oficiales. También puedes pegar la URL en el buscador o usar **Tutor: Agregar repositorio de cursos…**.",
+            "order": 8
           },
           "tutor.repoCatalogUrl": {
             "type": "string",
             "default": "",
             "scope": "window",
             "markdownDescription": "URL (http/https) de un `catalogo.json`. Si la defines, se usa en lugar de `#tutor.repoGithub#`. Formato en el README.",
-            "order": 7
+            "order": 9
           },
           "tutor.contentPath": {
             "type": "string",
             "default": "",
             "description": "Carpeta extra con cursos locales (carpetas que contengan curso.json). Vacío = solo los cursos descargados.",
-            "order": 8
+            "order": 10
           }
         }
       },
@@ -570,7 +594,7 @@
     "viewsWelcome": [
       {
         "view": "tutorChapters",
-        "contents": "Aún no hay cursos instalados.\n[Importar curso desde carpeta…](command:tutor.importCourseFolder)\n[Buscar cursos en el repositorio](command:tutor.searchRepo)\n[Accesibilidad y enfoque](command:tutor.accessibility)\nTras instalar un curso verás aquí el «Siguiente paso», los capítulos, tus ejercicios y las evaluaciones, sin salir de este panel."
+        "contents": "Aún no hay cursos instalados.\nLos cursos oficiales se descargan solos al abrir este panel con una carpeta abierta. Si no aparecen, búscalos en el repositorio.\n[Buscar cursos en el repositorio](command:tutor.searchRepo)\n[Agregar mi repositorio de cursos…](command:tutor.addRepo)\n[Importar curso desde carpeta…](command:tutor.importCourseFolder)\n[Accesibilidad y enfoque](command:tutor.accessibility)\nTras instalar un curso verás aquí el «Siguiente paso», los capítulos, tus ejercicios y las evaluaciones, sin salir de este panel."
       },
       {
         "view": "tutorDoubts",

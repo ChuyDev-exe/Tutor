@@ -5,6 +5,8 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/).
 ## [Sin publicar]
 
 ### Añadido
+- **Cursos de inicio:** la primera vez que abres el panel Tutor en una carpeta sin cursos se descargan solos los cursos de [ChuyDev-exe/Tutor-Cursos](https://github.com/ChuyDev-exe/Tutor-Cursos). Solo ocurre una vez por carpeta (si desinstalas uno, no vuelve). Ajuste `tutor.instalarCursosIniciales`.
+- **Tus propios repositorios:** pega la URL de tu repositorio de GitHub en *Buscar → Repositorio* (o usa *Tutor: Agregar repositorio de cursos…* / el botón ＋) y sus cursos aparecen junto a los oficiales, marcados con su origen. *Tutor: Quitar repositorio de cursos…* lo quita. Ajuste `tutor.repositorios`. Si un repositorio falla, los demás se siguen mostrando.
 - **Errores en el editor:** al correr o probar, las líneas donde el compilador o el intérprete encontró un error (gcc/g++, Go, Python, Node, tsx y Bash) se subrayan en tu archivo y aparecen en *Problemas*. Ajuste `tutor.erroresEnEditor`.
 - **«¿Por qué falla?»:** acción rápida sobre cada error (💡 o `Ctrl+.`) y un CodeLens arriba del archivo cuando algo falló; llevan la duda al chat del tutor, que orienta sin dar la solución. Comando *Tutor: ¿Por qué falla mi código?* (`Ctrl/Cmd+Alt+T E`).
 - **Repaso espaciado:** las preguntas que fallas en una evaluación vuelven a los 1, 3, 7, 14 y 30 días hasta que las aciertas en todos (sistema Leitner). El panel muestra *Repasar N preguntas* cuando toca; el repaso no cambia tu puntaje. Comando *Tutor: Repasar preguntas pendientes*.
@@ -14,6 +16,10 @@ Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/).
 - **Imágenes** en las evaluaciones (`imagen` en preguntas, zonas y elementos) y en la documentación (manuales, enunciados, pistas, soluciones y `MANUAL.md`): se copian junto a los archivos del alumno para que la vista previa las muestre.
 - **Vista «Dudas»** en el panel Tutor: tus preguntas al tutor y sus respuestas, agrupadas por curso (el curso actual arriba). Clic para abrir la duda en `dudas-y-preguntas.md`; el chat indica en qué curso se guardó.
 - `validate-course` y el esquema validan `arrastrar` y avisan de imágenes inexistentes o fuera del curso. La plantilla de curso incluye un ejemplo de ambas cosas.
+
+### Corregido
+- Pegar la URL de un repositorio en el buscador de *Repositorio* la usaba como filtro de texto y no mostraba ningún curso.
+- Una URL de repositorio de GitHub en `tutor.repoCatalogUrl` (que espera un `catalogo.json`) ahora se lee como repositorio.
 
 ### Cambiado
 - El tutor responde de forma **concisa y directa** (~100 palabras, sin rodeos) y conoce la lista de ejercicios del curso para no resolver ninguno, aunque se lo pidan disfrazado de duda general.

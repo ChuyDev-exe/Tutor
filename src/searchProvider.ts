@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import { a11yHead, registerWebview } from './a11y';
 import { getNonce } from './md';
 import { searchLocal } from './content';
-import { cachedEntry, downloadCourse, listRepoCourses, loadSummary } from './repo';
+import { addRepo, cachedEntry, DEFAULT_GITHUB_REPO, downloadCourse, getGithubRepo, listRepoCourses, loadSummary } from './repo';
 import { RepoCourseEntry } from './types';
 import { compareVersions, formatMinutes } from './pure';
 
@@ -75,6 +75,9 @@ export class SearchViewProvider implements vscode.WebviewViewProvider {
             }
             break;
           }
+          case 'addRepo':
+            void vscode.commands.executeCommand('tutor.addRepo');
+            break;
           case 'openSettings':
             vscode.commands.executeCommand('workbench.action.openSettings', 'tutor.repo');
             break;
@@ -106,10 +109,24 @@ export class SearchViewProvider implements vscode.WebviewViewProvider {
       duracion: r ? formatMinutes(r.minutos) : '',
       capitulos: r?.capitulos.length ?? 0,
       web: !!c.webUrl,
+      // solo se marca el origen de los cursos que no son del repositorio oficial
+      repo: c.repo && c.repo !== (getGithubRepo() || DEFAULT_GITHUB_REPO) ? c.repo : '',
     };
   }
 
+  /** Vuelve a pintar la lista (p. ej. tras instalar cursos o cambiar de repositorios). */
+  async refresh(force = false): Promise<void> {
+    if (this.view) await this.searchRepo(this.lastQuery, force);
+  }
+
   private async searchRepo(query: string, force = false): Promise<void> {
+    // pegar la URL de un repositorio de GitHub lo agrega (en vez de filtrar por ese texto)
+    if (/^\s*(https?:\/\/)?(www\.)?github\.com\//i.test(query)) {
+      const name = await addRepo(query);
+      this.view?.webview.postMessage({ type: 'repoAdded', text: `Repositorio ${name} agregado.` });
+      query = '';
+      force = true;
+    }
     this.lastQuery = query;
     this.view?.webview.postMessage({ type: 'status', text: 'Leyendo cursos del repositorio…', replace: true });
     let listing;
@@ -273,7 +290,7 @@ ${a11yHead(nonce)}
 
   <div id="panelRepo">
     <div class="row">
-      <input id="repoQ" type="text" placeholder="Filtrar cursos…" aria-label="Filtrar cursos" />
+      <input id="repoQ" type="text" placeholder="Filtrar cursos o pegar la URL de tu repositorio de GitHub…" aria-label="Filtrar cursos o agregar un repositorio de GitHub" />
       <button id="repoGo">Buscar</button>
     </div>
     <div id="repoOut"><div class="status">Cargando cursos…</div></div>
@@ -334,14 +351,15 @@ ${a11yHead(nonce)}
   function renderList(msg) {
     results = msg.results;
     const header = '<div class="bar"><div class="status">' + esc(msg.repoName) + ' · ' + results.length + ' curso(s)</div>' +
-      '<button class="icon small" id="refresh" title="Volver a leer el repositorio" aria-label="Volver a leer el repositorio">↻</button></div>';
+      '<span><button class="icon small" id="addRepo" title="Agregar tu repositorio de cursos (GitHub)" aria-label="Agregar tu repositorio de cursos">＋</button>' +
+      '<button class="icon small" id="refresh" title="Volver a leer los repositorios" aria-label="Volver a leer los repositorios">↻</button></span></div>';
     const body = !results.length ? '<div class="empty">Sin resultados.</div>' : results.map((c, i) =>
       '<div class="card clickable" tabindex="0" role="button" data-idx="' + i + '" aria-label="Ver ficha de ' + esc(c.titulo) + '">' +
         '<div class="card-head"><div>' +
           '<div class="t">' + esc(c.titulo) + '</div>' +
           '<div class="d">' + esc(c.descripcion) + '</div>' +
           '<div class="tags">' + stateTag(c) +
-            [c.nivel, c.duracion ? '⏱ ' + c.duracion : '', c.capitulos ? c.capitulos + ' capítulos' : ''].filter(Boolean).map(t => '<span class="tag">' + esc(t) + '</span>').join('') +
+            [c.nivel, c.duracion ? '⏱ ' + c.duracion : '', c.capitulos ? c.capitulos + ' capítulos' : '', c.repo].filter(Boolean).map(t => '<span class="tag">' + esc(t) + '</span>').join('') +
           '</div>' +
         '</div>' +
         (c.estado === 'instalado' ? '' : '<button class="small" data-dl="' + i + '">' + actionLabel(c) + '</button>') +
@@ -349,6 +367,7 @@ ${a11yHead(nonce)}
     ).join('');
     $('repoOut').innerHTML = (msg.aviso ? '<div class="error">' + esc(msg.aviso) + '</div>' : '') + header + body;
     $('refresh').addEventListener('click', () => search(true));
+    $('addRepo').addEventListener('click', () => vscode.postMessage({ type: 'addRepo' }));
     $('repoOut').querySelectorAll('.card').forEach(el => {
       const open = () => openDetails(results[Number(el.dataset.idx)].id, el);
       el.addEventListener('click', open);
@@ -440,6 +459,10 @@ ${a11yHead(nonce)}
         return;
       }
       renderList(msg);
+    } else if (msg.type === 'repoAdded') {
+      $('repoQ').value = '';
+      results = [];
+      $('repoOut').innerHTML = '<div class="status">' + esc(msg.text) + ' Leyendo sus cursos…</div>';
     } else if (msg.type === 'details') {
       renderDetails(msg.course);
     } else if (msg.type === 'downloaded') {
