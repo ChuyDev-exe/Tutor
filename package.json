@@ -2,7 +2,7 @@
   "name": "tutor-ide",
   "displayName": "Tutor IDE",
   "description": "Aprende programación sin salir del editor: cursos con ejercicios y pruebas automáticas, evaluaciones, progreso, tutor con IA en modo mentor y opciones de enfoque y accesibilidad.",
-  "version": "0.4.3",
+  "version": "1.0.0",
   "publisher": "ChuyExtension",
   "license": "MIT",
   "author": {
