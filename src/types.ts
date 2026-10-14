@@ -102,6 +102,8 @@ export interface Course {
   setupFile?: string;
   /** Manual de configuración en Markdown (ruta absoluta). */
   manualFile?: string;
+  /** Paquetes npm del curso (nombre → versión): se instalan una vez y los comparten todos los ejercicios. */
+  npm?: Record<string, string>;
 }
 
 export interface RepoCourseEntry {

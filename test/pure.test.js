@@ -184,3 +184,15 @@ test('el prompt del tutor pide respuestas concisas y protege todos los ejercicio
   assert.match(p, /CONCISO y DIRECTO/);
   assert.match(p, /EJERCICIOS DEL CURSO \(no los resuelvas\):\n- Intercambiar valores/);
 });
+
+test('parseNpmDeps acepta versiones del registro y descarta git, file y URLs', () => {
+  const { parseNpmDeps, npmDepsHash } = require('../out/pure');
+  assert.deepEqual(
+    parseNpmDeps({ 'react-dom': '^18.3.1', react: ' 18.3.1 ', '@types/node': '>=20 <23', evil: 'git+https://x/y.git', local: 'file:../x', 'a/b': '1', n: 3 }),
+    { '@types/node': '>=20 <23', react: '18.3.1', 'react-dom': '^18.3.1' }
+  );
+  assert.equal(parseNpmDeps({ evil: 'github:a/b' }), undefined);
+  assert.equal(parseNpmDeps(['react']), undefined);
+  assert.equal(npmDepsHash({ a: '1', b: '2' }), npmDepsHash({ b: '2', a: '1' }));
+  assert.notEqual(npmDepsHash({ a: '1' }), npmDepsHash({ a: '2' }));
+});

@@ -39,6 +39,7 @@ mi-curso/
 | `version` | Versión (`1.2.0`). Si el catálogo publica una mayor, se ofrece *Actualizar* sin perder progreso |
 | `manual`, `setup` | Manual de configuración (`.md`) y script `.sh` |
 | `requisitos` | Herramientas necesarias (ver abajo) |
+| `dependencias.npm` | Paquetes npm del curso (`{"react": "18.3.1"}`). Se instalan **una vez** en una caché compartida y se enlazan como un solo `node_modules` en la carpeta del curso: ningún ejercicio tiene el suyo. Solo versiones del registro; sin scripts de instalación |
 | `archivos` | Lista de archivos a descargar (si falta, se reconstruye desde el manifiesto) |
 | `capitulos` | Lista de capítulos |
 

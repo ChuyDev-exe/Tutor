@@ -256,7 +256,7 @@
       },
       {
         "command": "tutor.uninstallCourse",
-        "title": "Tutor: Desinstalar curso",
+        "title": "Tutor: Eliminar curso",
         "icon": "$(trash)"
       },
       {
@@ -737,6 +737,11 @@
           "command": "tutor.uninstallCourse",
           "when": "view == tutorChapters && viewItem =~ /^tutorCourse/",
           "group": "9_danger@1"
+        },
+        {
+          "command": "tutor.uninstallCourse",
+          "when": "view == tutorChapters && viewItem =~ /^tutorCourse/",
+          "group": "inline@9"
         },
         {
           "command": "tutor.runExercise",

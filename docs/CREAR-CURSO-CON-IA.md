@@ -52,6 +52,7 @@ Empieza siempre con `"$schema": "../../schemas/curso.schema.json"` si el curso v
 | `version` | recomendado | `1.0.0`. Súbela al cambiar el curso (activa «Actualizar») |
 | `manual`, `setup` | no | Rutas a `MANUAL.md` y `setup.sh` |
 | `requisitos` | no | Ver sección 7 |
+| `dependencias.npm` | no | Paquetes npm que usan los ejercicios JS/TS: `{"react": "18.3.1"}`. Un solo `node_modules` para todo el curso; **no** pongas un `package.json` por ejercicio |
 | `capitulos` | sí | Al menos uno, **en orden de estudio** |
 
 **Capítulo:** `id` (único, `c1`, `c2`…), `titulo`, `archivo` (manual, `.md`), `descripcion`, `tags`, `minutos` (entero), `ejercicios`, `evaluacion`, `aprobacion` (1–100, por defecto 70), `evaluacionRequerida` (bool), `barajar` (bool, por defecto true).

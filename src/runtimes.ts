@@ -1,4 +1,5 @@
 import * as path from 'path';
+import * as fs from 'fs';
 import { spawn } from 'child_process';
 
 /** Comandos para instalar una herramienta, por sistema (en Linux, por gestor de paquetes). */
@@ -139,6 +140,19 @@ export interface PreparedCommand {
   stop?: () => void;
 }
 
+/** `node_modules` más cercano subiendo desde `dir` (hasta 3 niveles), con el enlace ya resuelto. */
+export function nearestNodeModules(dir: string): string | undefined {
+  for (let d = dir, i = 0; i < 4; i++, d = path.dirname(d)) {
+    try {
+      return fs.realpathSync(path.join(d, 'node_modules'));
+    } catch {
+      /* sigue subiendo */
+    }
+    if (path.dirname(d) === d) break;
+  }
+  return undefined;
+}
+
 /**
  * Construye el comando a lanzar para `file`. En Docker, la carpeta del archivo se monta en /work
  * y `make` recibe la ruta dentro del contenedor. `montajes` añade archivos de solo lectura (host → contenedor).
@@ -150,6 +164,9 @@ export function buildCommand(
   montajes: [string, string][] = []
 ): PreparedCommand {
   if (mode.kind === 'local') return { argv: make(file) };
+  // node_modules compartido del curso (en una carpeta superior): Node lo busca subiendo desde /work
+  const modules = nearestNodeModules(path.dirname(file));
+  if (modules) montajes = [...montajes, [modules, '/node_modules']];
   const name = `tutor-ide-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
   // en Linux el contenedor escribe con tu usuario, para que el binario compilado no quede como root
   const user = typeof process.getuid === 'function' && process.platform === 'linux' ? ['--user', `${process.getuid()}:${process.getgid?.()}`] : [];

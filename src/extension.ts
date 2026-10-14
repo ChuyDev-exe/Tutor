@@ -15,6 +15,7 @@ import { checkRequirements, formatReport, openManual, runSetup, validateOnOpen }
 import { runSolution, runTestsFor, hasTests, runtimeFor, TestReport, RunResult } from './runner';
 import type { ExecMode } from './runtimes';
 import { runInTerminal } from './terminalRun';
+import { ensureNodeDeps, usesNode } from './nodeDeps';
 import { ensureRuntime } from './environment';
 import {
   ensureChapterManual,
@@ -352,6 +353,8 @@ export function activate(context: vscode.ExtensionContext): void {
   const prepareEnvironment = async (course: Course, exercise: Exercise): Promise<ExecMode | undefined> => {
     const mode = await ensureRuntime(context, exercise.lenguaje);
     if (!mode) return undefined;
+    // un solo node_modules por curso (compartido), nunca uno por ejercicio
+    if (usesNode(exercise.lenguaje) && !(await ensureNodeDeps(context, course))) return undefined;
     // en Docker la imagen ya trae lo necesario: los requisitos del curso son para la máquina del alumno
     if (mode.kind === 'docker') return mode;
     const blocking = (await validateOnOpen(course, true)).filter((s) => s.obligatorio && (!s.found || !s.versionOk));
@@ -676,17 +679,33 @@ export function activate(context: vscode.ExtensionContext): void {
         notify('Tutor: solo se pueden desinstalar cursos instalados por la extensión.');
         return;
       }
+      // el progreso va por id de curso en `.tutor`: si se conserva, al reinstalar el curso sigue donde iba
+      const KEEP = 'Eliminar y conservar progreso';
+      const WIPE = 'Eliminar y borrar progreso';
+      const pct = chapters.percent(course);
       const pick = await vscode.window.showWarningMessage(
-        `¿Desinstalar «${course.titulo}»? Se borran el curso (soluciones y pruebas) y tu progreso. Tu carpeta de trabajo no se toca.`,
-        { modal: true },
-        'Desinstalar'
+        `¿Eliminar «${course.titulo}»?`,
+        {
+          modal: true,
+          detail:
+            `Se borra el curso (soluciones y pruebas). Tu carpeta de trabajo no se toca.\n\n` +
+            `Llevas un ${pct}%${pct === 100 ? ' (curso terminado)' : ''}. Si conservas el progreso, ` +
+            `al volver a instalarlo seguirás donde te quedaste.`,
+        },
+        KEEP,
+        WIPE
       );
-      if (pick !== 'Desinstalar') return;
+      if (pick !== KEEP && pick !== WIPE) return;
       fs.rmSync(course.root, { recursive: true, force: true });
       delete tutorState.get().cursos[course.id];
-      tutorState.resetProgress(course.id);
+      if (pick === WIPE) tutorState.resetProgress(course.id);
+      else tutorState.save();
       chapters.reload();
-      notify(`Tutor: «${course.titulo}» desinstalado.`);
+      notify(
+        pick === KEEP
+          ? `Tutor: «${course.titulo}» eliminado. Tu progreso (${pct}%) queda guardado para cuando lo reinstales.`
+          : `Tutor: «${course.titulo}» eliminado junto con su progreso.`
+      );
     }),
 
     vscode.commands.registerCommand('tutor.revealStudentFolder', async (arg?: unknown) => {
@@ -713,13 +732,17 @@ export function activate(context: vscode.ExtensionContext): void {
       if (root) {
         const rel = path.relative(vscode.workspace.workspaceFolders![0].uri.fsPath, root);
         await vscode.commands.executeCommand('workbench.view.extension.tutor-container');
+        const pct = chapters.percent(course);
         notify(
           isUpdate
             ? `Tutor: «${course.titulo}» actualizado${course.version ? ` a la versión ${course.version}` : ''}. Tu progreso y tus archivos se conservan.`
-            : `Tutor: «${course.titulo}» instalado. Tu carpeta de trabajo: «${rel}». Sigue el «Siguiente paso» del panel Tutor.`
+            : pct > 0
+              ? `Tutor: «${course.titulo}» reinstalado. Recuperamos tu progreso (${pct}%${pct === 100 ? ', curso terminado' : ''}): sigues donde te quedaste.`
+              : `Tutor: «${course.titulo}» instalado. Tu carpeta de trabajo: «${rel}». Sigue el «Siguiente paso» del panel Tutor.`
         );
       }
       await validateOnOpen(course, true);
+      if (course.npm) void ensureNodeDeps(context, course);
     }),
 
     vscode.commands.registerCommand('tutor.checkRequirements', async (arg?: unknown) => {

@@ -16,6 +16,19 @@
     "manual": { "type": "string", "description": "Manual de configuración (.md) relativo a la carpeta del curso." },
     "setup": { "type": "string", "description": "Script .sh que prepara el entorno. Se ejecuta solo con permiso del alumno." },
     "requisitos": { "type": "array", "items": { "$ref": "#/definitions/requisito" }, "description": "Herramientas que el curso necesita en la máquina del alumno." },
+    "dependencias": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Paquetes que usa el curso. Se instalan una sola vez y los comparten todos los ejercicios (no hay un node_modules por ejercicio).",
+      "properties": {
+        "npm": {
+          "type": "object",
+          "description": "Paquetes npm: nombre → versión del registro (ej. \"react\": \"18.3.1\"). Sin git, file ni URLs; no se ejecutan scripts de instalación.",
+          "propertyNames": { "pattern": "^(@[a-z0-9][a-z0-9._-]*/)?[a-z0-9][a-z0-9._-]*$" },
+          "additionalProperties": { "type": "string", "pattern": "^[0-9A-Za-z.^~<>=|* -]{1,64}$" }
+        }
+      }
+    },
     "archivos": { "type": "array", "items": { "type": "string" }, "description": "Lista de archivos a descargar (opcional: si falta se reconstruye)." },
     "capitulos": { "type": "array", "minItems": 1, "items": { "$ref": "#/definitions/capitulo" }, "description": "Capítulos en orden: cada uno se desbloquea al completar el anterior." }
   },

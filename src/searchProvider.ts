@@ -53,6 +53,12 @@ export class SearchViewProvider implements vscode.WebviewViewProvider {
             await this.download(entry);
             break;
           }
+          case 'remove': {
+            // el comando pide confirmación y deja elegir si se conserva el progreso
+            await vscode.commands.executeCommand('tutor.uninstallCourse', String(msg.id));
+            await this.searchRepo(this.lastQuery);
+            break;
+          }
           case 'openWeb': {
             const url = cachedEntry(String(msg.id))?.webUrl;
             if (url && /^https:\/\/github\.com\//.test(url)) void vscode.env.openExternal(vscode.Uri.parse(url));
@@ -237,6 +243,7 @@ export class SearchViewProvider implements vscode.WebviewViewProvider {
   button:hover { background: var(--vscode-button-hoverBackground); }
   button:disabled { background: none; color: var(--vscode-descriptionForeground); cursor: default; }
   button.small { padding: 1px 7px; font-size: .8em; flex: none; }
+  .card-actions { display: flex; flex-direction: column; gap: 4px; flex: none; }
   button.secondary { background: var(--vscode-button-secondaryBackground, rgba(127,127,127,.25)); color: var(--vscode-button-secondaryForeground, inherit); }
   button.icon { background: none; color: var(--vscode-foreground); opacity: .7; padding: 2px 6px; }
   button.icon:hover { opacity: 1; background: var(--vscode-toolbar-hoverBackground, rgba(127,127,127,.2)); }
@@ -362,7 +369,10 @@ ${a11yHead(nonce)}
             [c.nivel, c.duracion ? '⏱ ' + c.duracion : '', c.capitulos ? c.capitulos + ' capítulos' : '', c.repo].filter(Boolean).map(t => '<span class="tag">' + esc(t) + '</span>').join('') +
           '</div>' +
         '</div>' +
-        (c.estado === 'instalado' ? '' : '<button class="small" data-dl="' + i + '">' + actionLabel(c) + '</button>') +
+        '<span class="card-actions">' +
+          (c.estado === 'instalado' ? '' : '<button class="small" data-dl="' + i + '">' + actionLabel(c) + '</button>') +
+          (c.estado === 'nuevo' ? '' : '<button class="small secondary" data-rm="' + i + '" title="Eliminar el curso (puedes conservar tu progreso)" aria-label="Eliminar ' + esc(c.titulo) + '">Eliminar</button>') +
+        '</span>' +
       '</div></div>'
     ).join('');
     $('repoOut').innerHTML = (msg.aviso ? '<div class="error">' + esc(msg.aviso) + '</div>' : '') + header + body;
@@ -375,6 +385,9 @@ ${a11yHead(nonce)}
     });
     $('repoOut').querySelectorAll('button[data-dl]').forEach(btn =>
       btn.addEventListener('click', (e) => { e.stopPropagation(); download(results[Number(btn.dataset.dl)].id, btn); })
+    );
+    $('repoOut').querySelectorAll('button[data-rm]').forEach(btn =>
+      btn.addEventListener('click', (e) => { e.stopPropagation(); vscode.postMessage({ type: 'remove', id: results[Number(btn.dataset.rm)].id }); })
     );
   }
 
@@ -439,10 +452,12 @@ ${a11yHead(nonce)}
       '<h3>Temario</h3>' + (temario ? '<ol class="temario">' + temario + '</ol>' : '<div class="empty">Sin capítulos.</div>') +
       '<div class="actions">' +
         '<button id="mDownload"' + (c.estado === 'instalado' ? ' disabled' : '') + '>' + actionLabel(c) + '</button>' +
+        (c.estado !== 'nuevo' ? '<button class="secondary" id="mRemove">Eliminar</button>' : '') +
         (c.web ? '<button class="secondary" id="mWeb">Ver en GitHub</button>' : '') +
         '<button class="secondary" id="mCancel">Cerrar</button>' +
       '</div>';
     if (c.estado !== 'instalado') $('mDownload').addEventListener('click', () => download(c.id));
+    if (c.estado !== 'nuevo') $('mRemove').addEventListener('click', () => { closeModal(); vscode.postMessage({ type: 'remove', id: c.id }); });
     if (c.web) $('mWeb').addEventListener('click', () => vscode.postMessage({ type: 'openWeb', id: c.id }));
     $('mCancel').addEventListener('click', closeModal);
   }

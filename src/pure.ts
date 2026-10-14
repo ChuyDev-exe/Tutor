@@ -413,3 +413,22 @@ export function reviewAfterAnswer(card: ReviewCard | undefined, ok: boolean, tod
   const caja = card.caja + 1;
   return caja >= REVIEW_DAYS.length ? undefined : { caja, proxima: addDays(today, REVIEW_DAYS[caja]) };
 }
+
+// ── Dependencias npm del curso ──────────────────────────────────────────
+const NPM_NAME = /^(@[a-z0-9][a-z0-9._-]*\/)?[a-z0-9][a-z0-9._-]*$/;
+/** Solo versiones del registro: sin `git:`, `file:`, URLs ni rutas (el curso no es de confianza). */
+const NPM_RANGE = /^[0-9A-Za-z.^~<>=|* -]{1,64}$/;
+
+/** `dependencias.npm` del curso, filtrado y ordenado. undefined si no hay paquetes válidos. */
+export function parseNpmDeps(raw: unknown): Record<string, string> | undefined {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return undefined;
+  const deps = Object.entries(raw as Record<string, unknown>)
+    .filter((e): e is [string, string] => NPM_NAME.test(e[0]) && typeof e[1] === 'string' && NPM_RANGE.test(e[1].trim()))
+    .map(([k, v]) => [k, v.trim()] as const)
+    .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0));
+  return deps.length ? Object.fromEntries(deps) : undefined;
+}
+
+/** Identifica un conjunto de paquetes: cursos con los mismos paquetes comparten la instalación. */
+export const npmDepsHash = (deps: Record<string, string>): string =>
+  createHash('sha1').update(JSON.stringify(Object.entries(deps).sort())).digest('hex').slice(0, 16);

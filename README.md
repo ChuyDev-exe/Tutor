@@ -93,7 +93,7 @@ Todos empiezan por **Tutor:** en la paleta de comandos (`Ctrl/Cmd+Shift+P`).
 | Repasar preguntas pendientes | Las preguntas falladas que toca repasar hoy |
 | Mi progreso | Panel con el avance por capítulo |
 | Mis dudas y preguntas · Ver mis pensamientos pendientes | Abren tus archivos de notas |
-| Importar curso desde carpeta · Buscar cursos en el repositorio · Agregar / Quitar repositorio de cursos · Desinstalar curso | Gestión de cursos |
+| Importar curso desde carpeta · Buscar cursos en el repositorio · Agregar / Quitar repositorio de cursos · Eliminar curso (conserva tu progreso si quieres) | Gestión de cursos |
 | Verificar requisitos · Ejecutar setup · Abrir manual de configuración | Preparar el entorno del curso |
 | Configurar IA del tutor · Establecer API Key | Proveedor, modelo y clave |
 | Preferencias… · Perfiles de accesibilidad (menú rápido) | Enfoque y accesibilidad |

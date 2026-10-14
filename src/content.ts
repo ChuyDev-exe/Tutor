@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import * as path from 'path';
 import * as fs from 'fs';
 import { Chapter, Course, Exercise } from './types';
-import { parseQuiz } from './pure';
+import { parseNpmDeps, parseQuiz } from './pure';
 
 import { tutorState } from './state';
 
@@ -108,6 +108,7 @@ function loadCourse(dir: string, source: Course['source']): Course | undefined {
         : [],
       setupFile: raw.setup ? path.join(dir, String(raw.setup)) : undefined,
       manualFile: raw.manual ? path.join(dir, String(raw.manual)) : undefined,
+      npm: parseNpmDeps(raw.dependencias?.npm),
     };
   } catch {
     return undefined;
